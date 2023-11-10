@@ -1,10 +1,11 @@
 import shutil
-
-import amulet
-import amulet_nbt as n
 import os
 import re
 import sys
+
+import amulet
+import amulet_nbt as n
+
 from tqdm import tqdm
 
 OLD_SPAWNER_FORMAT = False  # If this is false, uses 1.18+ nbt paths for spawners
@@ -511,7 +512,8 @@ def main():
     print('''
 +===================================+
 | [Chinese] 存档翻译提取器(魔改)　　　　 |
-| 原作者Suso; 作者FengMing3093　　　　　|
+| 原作者Suso　　　　　　　　　　　　　　　 |
+| 魔改作者FengMing3093　　　　　　　　　 |
 | 使用Amulet API核心　　　　　　　　　　　|
 +===================================+
 ''')

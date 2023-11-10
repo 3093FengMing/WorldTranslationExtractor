@@ -9,7 +9,7 @@ Install: `pip install amulet-map-editor`, `pip install tqdm`
 
 ### Changes
 
-Keep duplicate keys, backup the world, and modify `handle_sign` function to enable its use on 1.19+.
+Keep duplicate keys, backup the world, and modify `handle_sign` function to be available on 1.19+.
 
 Here is the original `README.md`:
 
