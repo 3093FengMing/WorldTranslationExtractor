@@ -1,18 +1,19 @@
-# WorldTranslationExtractor
-forked by (WorldTranslationExtractor)[https://github.com/5uso/AmuletScripts/blob/main/WorldTranslationExtractor.py]
+## World Translation Extractor
+Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob/main/WorldTranslationExtractor.py)
 
+### Infomation
 This version changes some things.
 Needs `amulet-map-editor` and `tqdm`.
 
 Install: `pip install amulet-map-editor`, `pip install tqdm`
 
-Including:
+### Changes
 
 Keep duplicate keys, backup the world, and modify `handle_sign` function to enable its use on 1.19+.
 
 Here is the original `README.md`:
 
-##
+## Original Readme
 
 Scans a full world searching for json `"text"` components and replaces them with `"translation"` components, generating a lang file to be used with a resourcepack. Tested in `1.16.5` and `1.19.3`.
 
