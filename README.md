@@ -11,13 +11,13 @@ Install: `pip install amulet-map-editor`, `pip install tqdm`
 
 1. Keep duplicate keys.
 2. Backup the world.
-3. Modify `handle_sign` function to be available on 1.19+.
+3. Supports signs on 1.19+.
 4. Supports command in the command blocks.
 5. Convert to standard JSON format to generate language file.
 
-Here is the original `README.md`:
-
 ## Original Readme
+
+Here is the original `README.md`:
 
 Scans a full world searching for json `"text"` components and replaces them with `"translation"` components, generating a lang file to be used with a resourcepack. Tested in `1.16.5` and `1.19.3`.
 
