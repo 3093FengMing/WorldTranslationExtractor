@@ -1,7 +1,7 @@
 ## World Translation Extractor
 Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob/main/WorldTranslationExtractor.py)
 
-### Infomation
+### Information
 This version changes some things.
 Needs `amulet-map-editor` and `tqdm`.
 
@@ -9,7 +9,11 @@ Install: `pip install amulet-map-editor`, `pip install tqdm`
 
 ### Changes
 
-Keep duplicate keys, backup the world, and modify `handle_sign` function to be available on 1.19+.
+1. Keep duplicate keys.
+2. Backup the world.
+3. Modify `handle_sign` function to be available on 1.19+.
+4. Supports command in the command blocks.
+5. Convert to standard JSON format to generate language file.
 
 Here is the original `README.md`:
 
