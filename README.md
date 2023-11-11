@@ -12,10 +12,14 @@ Install: `pip install amulet-map-editor`, `pip install tqdm`
 1. Keep duplicate keys.
 2. Backup the world.
 3. Supports signs on 1.19+.
-4. Supports command in the command blocks.
-5. Convert to standard JSON format to generate language file.
+4. Supports command blocks.
+5. Supports beehive and bee nest.
+6. Supports chiseled bookshelves.
+7. Convert to standard JSON format to generate language file.
 
 ## Original Readme
+
+The underlined and bold text means that this feature is newly added.
 
 Here is the original `README.md`:
 
@@ -24,10 +28,12 @@ Scans a full world searching for json `"text"` components and replaces them with
 Finds json components in:
 - Blocks
   - Spawners: SpawnData, SpawnPotentials
-  - Containers: items, container name (`"chest"`, `"furnace"`, `"shulker_box"`, `"barrel"`, `"smoker"`, `"blast_furnace"`, `"trapped_chest"`, `"hopper"`, `"dispenser"`, `"dropper"`, `"brewing_stand"`, `"campfire"`)
-  - Signs: text1-4
+  - Containers: items, container name (`"chest"`, `"furnace"`, `"shulker_box"`, `"barrel"`, `"smoker"`, `"blast_furnace"`, `"trapped_chest"`, `"hopper"`, `"dispenser"`, `"dropper"`, `"brewing_stand"`, `"campfire"`, <u>**`"chiseled_bookshelf"`**</u>)
+  - Signs: text1-4, <u>**front text, back text (1.19+)**</u>
   - Lecterns: Book
   - Jukeboxes: RecordItem
+  - <u>**Beehives & Bee nests: Bees**
+  - **Command block: Command**</u>
 
 - Entities
   - Name
@@ -44,7 +50,7 @@ Finds json components in:
   - Book pages
   - Book title: adds a customname in case it doesn't already have one
   - BlockEntityTag
-  - EntityTag:
+  - EntityTag
 
 - Scoreboard: objective names, team names and affixes
 

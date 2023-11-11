@@ -19,7 +19,7 @@ REG3 = re.compile(r'"contents":"((?:[^"\\]|\\\\"|\\.)*)"')
 REG4 = re.compile(r'bossbar set ([^ ]+) name "(.*)"')
 REG5 = re.compile(r'bossbar add ([^ ]+) "(.*)"')
 CONTAINERS = ["chest", "furnace", "shulker_box", "barrel", "smoker", "blast_furnace", "trapped_chest", "hopper",
-              "dispenser", "dropper", "brewing_stand", "campfire"]
+              "dispenser", "dropper", "brewing_stand", "campfire", "chiseled_bookshelf"]
 
 rev_lang = dict()
 rel_lang = dict()
@@ -72,8 +72,8 @@ def match_text(match, escaped=False):
     rk = get_key()
     if plain not in rev_lang:
         rev_lang[plain] = rk
-    if plain.strip() == '':
-        return f'\\"translate\\":\\"{rev_lang[plain]}\\"' if escaped else f'"translate":"{rev_lang[plain]}"'
+    if plain == '':
+        return f'\\"translate\\":\\"empty\\"' if escaped else f'"translate":"empty"'
     rel_lang[rk] = plain
     # print(f'[json] put key: {rk}: {rel_lang[rk]}')
     if ALLOW_DUPE_VALUES:
@@ -86,8 +86,8 @@ def match_contents(match):
     rk = get_key()
     if plain not in rev_lang:
         rev_lang[plain] = rk
-    if plain.strip() == '':
-        return f'"contents":{{"translate":"{rev_lang[plain]}"}}'
+    if plain == '':
+        return f'"contents":{{"translate":"empty"}}'
     rel_lang[rk] = plain
     # print(f'[contents] put key: {rk}: {rel_lang[rk]}')
     if ALLOW_DUPE_VALUES:
@@ -101,8 +101,8 @@ def match_bossbar(match):
     rk = get_key()
     if plain not in rev_lang:
         rev_lang[plain] = rk
-    if plain.strip() == '':
-        return f'bossbar set {name} name {{"translate":"{rev_lang[plain]}"}}'
+    if plain == '':
+        return f'bossbar set {name} name {{"translate":"empty"}}'
     rel_lang[rk] = plain
     # print(f'[bossbar] put key: {rk}: {rel_lang[rk]}')
     if ALLOW_DUPE_VALUES:
@@ -116,8 +116,8 @@ def match_bossbar2(match):
     rk = get_key()
     if plain not in rev_lang:
         rev_lang[plain] = rk
-    if plain.strip() == '':
-        return f'bossbar add {name} {{"translate":"{rev_lang[plain]}"}}'
+    if plain == '':
+        return f'bossbar add {name} {{"translate":"empty"}}'
     rel_lang[rk] = plain
     # print(f'[bossbar] put key: {rk}: {rel_lang[rk]}')
     if ALLOW_DUPE_VALUES:
@@ -229,6 +229,14 @@ def handle_lectern(lectern):
     return False
 
 
+def handle_decorated_pot(decorated_pot):
+    try:
+        return handle_item(decorated_pot['item'])
+    except KeyError:
+        pass
+    return False
+
+
 def handle_command_block(command_block):
     block_counts.setdefault("command_block", 1)
     translation_cnt = len(rev_lang)
@@ -276,6 +284,32 @@ def handle_sign(sign):
         block_counts["sign"] += 1
 
     return True
+
+
+def handle_spawner(spawner):
+    changed = False
+    try:
+        if OLD_SPAWNER_FORMAT:
+            changed = handle_entity(spawner['SpawnData'], None)
+            for p in spawner['SpawnPotentials']:
+                changed |= handle_entity(p['Entity'], None)
+        else:
+            changed = handle_entity(spawner['SpawnData']['entity'], None)
+            for p in spawner['SpawnPotentials']:
+                changed |= handle_entity(p['data']['entity'], None)
+    except KeyError:
+        pass
+    return changed
+
+
+def handle_beehive(beehive):
+    changed = False
+    try:
+        for bee in beehive['Bees']:
+            changed |= handle_entity(bee['EntityData'], None)
+    except KeyError:
+        pass
+    return changed
 
 
 def handle_entity(entity, type):
@@ -339,22 +373,6 @@ def handle_entity(entity, type):
     return changed
 
 
-def handle_spawner(spawner):
-    changed = False
-    try:
-        if OLD_SPAWNER_FORMAT:
-            changed = handle_entity(spawner['SpawnData'], None)
-            for p in spawner['SpawnPotentials']:
-                changed |= handle_entity(p['Entity'], None)
-        else:
-            changed = handle_entity(spawner['SpawnData']['entity'], None)
-            for p in spawner['SpawnPotentials']:
-                changed |= handle_entity(p['data']['entity'], None)
-    except KeyError:
-        pass
-    return changed
-
-
 def handle_block_entity_base(block_entity, name):
     if name == "spawner":
         return handle_spawner(block_entity)
@@ -366,8 +384,12 @@ def handle_block_entity_base(block_entity, name):
         return handle_lectern(block_entity)
     elif name == "jukebox":
         return handle_jukebox(block_entity)
+    # elif name == "decorated_pot":
+    #     return handle_decorated_pot(block_entity)
     elif name == "command_block":
         return handle_command_block(block_entity)
+    elif name == "beehive" or name == "bee_nest":
+        return handle_beehive(block_entity)
     return False
 
 
@@ -401,7 +423,7 @@ def scan_world(level):
         print(f"维度 {dimension}: ")
         try:
             count = 0
-            for coords in tqdm(chunk_coords, unit="区块", desc="扫描区块中"):
+            for coords in tqdm(chunk_coords, unit="区块", desc="扫描区块中", colour="green"):
                 try:
                     chunk = level.get_chunk(coords[0], coords[1], dimension)
                     entities = level.get_native_entities(coords[0], coords[1], dimension)[0]
@@ -414,7 +436,7 @@ def scan_world(level):
                     if count < 5000:
                         continue
                     count = 0
-                    print("保存中......")
+                    print("\n保存中......")
                     level.save()
                     level.unload()
             level.save()
@@ -510,7 +532,7 @@ def scan_datapacks(path):
 
 # main
 def gen_lang(path):
-    obj = json.dumps(rel_lang, indent=2, sort_keys=True)
+    obj = json.dumps(rel_lang, indent=2)
     with open(path, 'w', encoding="utf-8") as f:
         f.write(obj)
 
@@ -530,7 +552,7 @@ def main():
 | [Chinese] 存档翻译提取器(魔改)　　　　 |
 | 原作者Suso　　　　　　　　　　　　　　　 |
 | 魔改作者FengMing3093　　　　　　　　　 |
-| 使用Amulet API核心　　　　　　　　　　　|
+| 使用Amulet核心　　　　　　　　　　　　  |
 +===================================+
 ''')
 
