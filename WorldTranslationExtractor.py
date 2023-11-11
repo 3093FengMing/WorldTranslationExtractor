@@ -1,3 +1,4 @@
+import json
 import shutil
 import os
 import re
@@ -10,7 +11,7 @@ from tqdm import tqdm
 
 OLD_SPAWNER_FORMAT = False  # If this is false, uses 1.18+ nbt paths for spawners
 
-allow_dupe_values = False
+ALLOW_DUPE_VALUES = False
 
 REG = re.compile(r'"text" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
 REG2 = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\.)*)\\"')
@@ -75,7 +76,7 @@ def match_text(match, escaped=False):
         return f'\\"translate\\":\\"{rev_lang[plain]}\\"' if escaped else f'"translate":"{rev_lang[plain]}"'
     rel_lang[rk] = plain
     # print(f'[json] put key: {rk}: {rel_lang[rk]}')
-    if allow_dupe_values:
+    if ALLOW_DUPE_VALUES:
         return f'\\"translate\\":\\"{rev_lang[plain]}\\"' if escaped else f'"translate":"{rev_lang[plain]}"'
     return f'\\"translate\\":\\"{rk}\\"' if escaped else f'"translate":"{rk}"'
 
@@ -89,7 +90,7 @@ def match_contents(match):
         return f'"contents":{{"translate":"{rev_lang[plain]}"}}'
     rel_lang[rk] = plain
     # print(f'[contents] put key: {rk}: {rel_lang[rk]}')
-    if allow_dupe_values:
+    if ALLOW_DUPE_VALUES:
         return f'"contents":{{"translate":"{rev_lang}"}}'
     return f'"contents":{{"translate":"{rk}"}}'
 
@@ -104,7 +105,7 @@ def match_bossbar(match):
         return f'bossbar set {name} name {{"translate":"{rev_lang[plain]}"}}'
     rel_lang[rk] = plain
     # print(f'[bossbar] put key: {rk}: {rel_lang[rk]}')
-    if allow_dupe_values:
+    if ALLOW_DUPE_VALUES:
         return f'bossbar set {name} name {{"translate":"{rev_lang[plain]}"}}'
     return f'bossbar set {name} name {{"translate":"{rk}"}}'
 
@@ -119,7 +120,7 @@ def match_bossbar2(match):
         return f'bossbar add {name} {{"translate":"{rev_lang[plain]}"}}'
     rel_lang[rk] = plain
     # print(f'[bossbar] put key: {rk}: {rel_lang[rk]}')
-    if allow_dupe_values:
+    if ALLOW_DUPE_VALUES:
         return f'bossbar add {name} {{"translate":"{rev_lang[plain]}"}}'
     return f'bossbar add {name} {{"translate":"{rk}"}}'
 
@@ -226,6 +227,25 @@ def handle_lectern(lectern):
     except KeyError:
         pass
     return False
+
+
+def handle_command_block(command_block):
+    block_counts.setdefault("command_block", 1)
+    translation_cnt = len(rev_lang)
+    set_key(f"block.command_block.{block_counts['command_block']}.command")
+
+    command = str(command_block['Command'])
+    txt = REG.sub(string=command, repl=match_text)
+    txt = REG2.sub(string=txt, repl=match_text_escaped)
+    txt = REG3.sub(string=txt, repl=match_contents)
+    txt = REG4.sub(string=txt, repl=match_bossbar)
+    result_command = REG5.sub(string=txt, repl=match_bossbar2)
+    command_block['Command'] = n.TAG_String(result_command)
+
+    if translation_cnt != len(rev_lang):
+        block_counts["command_block"] += 1
+
+    return True
 
 
 def handle_sign(sign):
@@ -346,6 +366,8 @@ def handle_block_entity_base(block_entity, name):
         return handle_lectern(block_entity)
     elif name == "jukebox":
         return handle_jukebox(block_entity)
+    elif name == "command_block":
+        return handle_command_block(block_entity)
     return False
 
 
@@ -488,15 +510,9 @@ def scan_datapacks(path):
 
 # main
 def gen_lang(path):
+    obj = json.dumps(rel_lang, indent=2, sort_keys=True)
     with open(path, 'w', encoding="utf-8") as f:
-        f.write('{\n')
-        lines = list(map(lambda entry: f'  "{entry}": "{rel_lang[entry]}",\n', rel_lang))
-        if len(lines) == 0:
-            print("未找到可翻译文本！")
-        else:
-            lines[-1] = lines[-1][:-2]
-        f.writelines(lines)
-        f.write('\n}\n')
+        f.write(obj)
 
 
 def backup_saves(path, source):
@@ -526,8 +542,8 @@ def main():
         print(f"备份中: {os.path.abspath('.')}\\backup")
         backup_saves(os.path.abspath('./backup/'), sys.argv[1])
 
-    global allow_dupe_values
-    allow_dupe_values = query_yn("是否保留重复项？")
+    global ALLOW_DUPE_VALUES
+    ALLOW_DUPE_VALUES = query_yn("是否保留重复项？")
 
     rev_lang[""] = "empty"
     rel_lang[""] = "empty"
