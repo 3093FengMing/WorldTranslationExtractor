@@ -557,7 +557,7 @@ def main():
 ''')
 
     if len(sys.argv) < 2:
-        print(f"用法: python {sys.argv[0]} <存档>/Usage: python {} <world>")
+        print(f"用法: python {sys.argv[0]} <存档>/Usage: python {sys.argv[0]} <world>")
         exit(0)
 
     if query_yn("是否为存档创建备份？/Have you made a backup of your world?"):
