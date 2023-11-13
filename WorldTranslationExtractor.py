@@ -420,10 +420,10 @@ def scan_world(level):
         chunk_coords = sorted(level.all_chunk_coords(dimension))
         if len(chunk_coords) < 1:
             continue
-        print(f"维度 {dimension}: ")
+        print(f"维度/Dimension {dimension}: ")
         try:
             count = 0
-            for coords in tqdm(chunk_coords, unit="区块", desc="扫描区块中", colour="green"):
+            for coords in tqdm(chunk_coords, unit="区块", desc="扫描区块中/Scanning chunks", colour="green"):
                 try:
                     chunk = level.get_chunk(coords[0], coords[1], dimension)
                     entities = level.get_native_entities(coords[0], coords[1], dimension)[0]
@@ -463,7 +463,7 @@ def scan_scores(path):
             t['MemberNameSuffix'] = replace_component(t['MemberNameSuffix'])
         scores.save_to(path)
     except Exception as e:
-        print("无法访问计分板数据：/No scoreboard data could be accessed:", e)
+        print("无法访问计分板数据：/No scoreboard data could be accessed: ", e)
 
 
 def scan_level(path):
@@ -475,7 +475,7 @@ def scan_level(path):
                 level.tag['Data']['CustomBossEvents'][b]['Name'])
         level.save_to(path)
     except Exception as e:
-        print("无法访问Bossbar数据：/No bossbar data could be accessed:", e)
+        print("无法访问Bossbar数据：/No bossbar data could be accessed: ", e)
 
 
 def scan_structure(path):
@@ -521,7 +521,7 @@ def scan_file(path, start):
         with open(path, 'w', encoding="utf-8") as f:
             f.writelines(line)
     except Exception as e:
-        print("无法替换数据包文件/Can't replace datapack file '" + path + "':", e)
+        print("无法替换数据包文件/Couldn't replace datapack file '" + path + "':", e)
 
 
 def scan_datapacks(path):
@@ -548,19 +548,19 @@ def backup_saves(path, source):
 
 def main():
     print('''
-+===================================+
-| [Chinese] 存档翻译提取器(魔改)　　　　 |
-| 原作者Suso　　　　　　　　　　　　　　　 |
-| 魔改作者FengMing3093　　　　　　　　　 |
-| 使用Amulet核心　　　　　　　　　　　　  |
-+===================================+
++==================================+
+| [Chinese] 存档翻译提取器(魔改)   |
+| 原作者Suso                       |
+| 魔改作者FengMing3093             |
+| 使用Amulet核心                   |
++==================================+
 ''')
 
     if len(sys.argv) < 2:
         print(f"用法: python {sys.argv[0]} <存档>/Usage: python {sys.argv[0]} <world>")
         exit(0)
 
-    if query_yn("是否为存档创建备份？/Have you made a backup of your world?"):
+    if query_yn("是否为存档创建备份？/Create a backup for your world?"):
         print(f"备份中: {os.path.abspath('.')}\\backup")
         backup_saves(os.path.abspath('./backup/'), sys.argv[1])
 
