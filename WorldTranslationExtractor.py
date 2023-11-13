@@ -41,7 +41,7 @@ def query_yn(question):
         if choice in valid:
             return valid[choice]
         else:
-            sys.stdout.write("输入 'yes' 或 'no'\n")
+            sys.stdout.write("输入 'yes' 或 'no'/Please respond with 'yes' or 'no'.\n")
 
 
 # keys
@@ -441,7 +441,7 @@ def scan_world(level):
                     level.unload()
             level.save()
         except KeyboardInterrupt:
-            print("中断！最后5000区块切片数据将不会保存！")
+            print("中断！最后5000区块切片数据将不会保存！/Interrupted. Changes to last 5000 chunk slice won't be saved.")
             level.close()
             exit(0)
         level.unload()
@@ -463,7 +463,7 @@ def scan_scores(path):
             t['MemberNameSuffix'] = replace_component(t['MemberNameSuffix'])
         scores.save_to(path)
     except Exception as e:
-        print("无法访问计分板数据: ", e)
+        print("无法访问计分板数据：/No scoreboard data could be accessed:", e)
 
 
 def scan_level(path):
@@ -475,7 +475,7 @@ def scan_level(path):
                 level.tag['Data']['CustomBossEvents'][b]['Name'])
         level.save_to(path)
     except Exception as e:
-        print("无法访问Bossbar数据: ", e)
+        print("无法访问Bossbar数据：/No bossbar data could be accessed:", e)
 
 
 def scan_structure(path):
@@ -493,7 +493,7 @@ def scan_structure(path):
                 pass
         structure.save_to(path)
     except Exception as e:
-        print("无法打开结构文件 '" + path + "':", e)
+        print("无法打开结构文件/Couldn't open structure file '" + path + "':", e)
 
 
 def scan_file(path, start):
@@ -521,7 +521,7 @@ def scan_file(path, start):
         with open(path, 'w', encoding="utf-8") as f:
             f.writelines(line)
     except Exception as e:
-        print("无法替换数据包文件 '" + path + "':", e)
+        print("无法替换数据包文件/Can't replace datapack file '" + path + "':", e)
 
 
 def scan_datapacks(path):
@@ -557,10 +557,10 @@ def main():
 ''')
 
     if len(sys.argv) < 2:
-        print(f"用法: python {sys.argv[0]} <存档>")
+        print(f"用法: python {sys.argv[0]} <存档>/Usage: python {} <world>")
         exit(0)
 
-    if query_yn("是否为存档创建备份？"):
+    if query_yn("是否为存档创建备份？/Have you made a backup of your world?"):
         print(f"备份中: {os.path.abspath('.')}\\backup")
         backup_saves(os.path.abspath('./backup/'), sys.argv[1])
 
@@ -570,30 +570,30 @@ def main():
     rev_lang[""] = "empty"
     rel_lang[""] = "empty"
 
-    print("\n扫描区块...")
+    print("\n扫描区块.../Scanning chunks...")
     try:
         level = amulet.load_level(sys.argv[1])
         if level.level_wrapper.version < 2826:
             global OLD_SPAWNER_FORMAT
             OLD_SPAWNER_FORMAT = True
-            print("使用旧版刷怪笼格式")
+            print("使用旧版刷怪笼格式/Using old spawner format.")
         scan_world(level)
     except Exception as e:
-        print("加载存档时出错: ", e)
+        print("加载存档时出错：/Error loading world:", e)
         exit(1)
 
-    print("\n扫描杂项NBT")
+    print("\n扫描杂项NBT/Scanning misc NBT...")
     scan_scores(sys.argv[1] + "/data/scoreboard.dat")
     scan_level(sys.argv[1] + "/level.dat")
 
-    print("\n扫描数据包文件")
+    print("\n扫描数据包文件/Scanning datapack files...")
     scan_datapacks(sys.argv[1] + "/datapacks")
     scan_datapacks(sys.argv[1] + "/generated")
 
-    print("\n生成语言文件")
+    print("\n生成语言文件/Generating default lang file...")
     gen_lang('default_lang.json')
 
-    print("完工！")
+    print("完工！/Done!")
 
 
 if __name__ == '__main__':
