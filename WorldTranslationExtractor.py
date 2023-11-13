@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 OLD_SPAWNER_FORMAT = False  # If this is false, uses 1.18+ nbt paths for spawners
 
-ALLOW_DUPE_VALUES = False
+DISABLE_DUPE_VALUES = False
 
 REG = re.compile(r'"text" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
 REG2 = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\.)*)\\"')
@@ -76,7 +76,7 @@ def match_text(match, escaped=False):
         return f'\\"translate\\":\\"empty\\"' if escaped else f'"translate":"empty"'
     rel_lang[rk] = plain
     # print(f'[json] put key: {rk}: {rel_lang[rk]}')
-    if ALLOW_DUPE_VALUES:
+    if DISABLE_DUPE_VALUES:
         return f'\\"translate\\":\\"{rev_lang[plain]}\\"' if escaped else f'"translate":"{rev_lang[plain]}"'
     return f'\\"translate\\":\\"{rk}\\"' if escaped else f'"translate":"{rk}"'
 
@@ -90,7 +90,7 @@ def match_contents(match):
         return f'"contents":{{"translate":"empty"}}'
     rel_lang[rk] = plain
     # print(f'[contents] put key: {rk}: {rel_lang[rk]}')
-    if ALLOW_DUPE_VALUES:
+    if DISABLE_DUPE_VALUES:
         return f'"contents":{{"translate":"{rev_lang}"}}'
     return f'"contents":{{"translate":"{rk}"}}'
 
@@ -105,7 +105,7 @@ def match_bossbar(match):
         return f'bossbar set {name} name {{"translate":"empty"}}'
     rel_lang[rk] = plain
     # print(f'[bossbar] put key: {rk}: {rel_lang[rk]}')
-    if ALLOW_DUPE_VALUES:
+    if DISABLE_DUPE_VALUES:
         return f'bossbar set {name} name {{"translate":"{rev_lang[plain]}"}}'
     return f'bossbar set {name} name {{"translate":"{rk}"}}'
 
@@ -120,7 +120,7 @@ def match_bossbar2(match):
         return f'bossbar add {name} {{"translate":"empty"}}'
     rel_lang[rk] = plain
     # print(f'[bossbar] put key: {rk}: {rel_lang[rk]}')
-    if ALLOW_DUPE_VALUES:
+    if DISABLE_DUPE_VALUES:
         return f'bossbar add {name} {{"translate":"{rev_lang[plain]}"}}'
     return f'bossbar add {name} {{"translate":"{rk}"}}'
 
@@ -564,11 +564,11 @@ def main():
         print(f"备份中: {os.path.abspath('.')}\\backup")
         backup_saves(os.path.abspath('./backup/'), sys.argv[1])
 
-    global ALLOW_DUPE_VALUES
-    ALLOW_DUPE_VALUES = query_yn("是否保留重复项？")
+    global DISABLE_DUPE_VALUES
+    DISABLE_DUPE_VALUES = not query_yn("是否保留重复项？")
 
     rev_lang[""] = "empty"
-    rel_lang[""] = "empty"
+    rel_lang["empty"] = ""
 
     print("\n扫描区块.../Scanning chunks...")
     try:
@@ -579,7 +579,7 @@ def main():
             print("使用旧版刷怪笼格式/Using old spawner format.")
         scan_world(level)
     except Exception as e:
-        print("加载存档时出错：/Error loading world:", e)
+        print("加载存档时出错: /Error loading world: ", e)
         exit(1)
 
     print("\n扫描杂项NBT/Scanning misc NBT...")
