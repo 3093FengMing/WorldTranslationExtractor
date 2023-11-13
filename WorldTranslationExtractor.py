@@ -565,7 +565,7 @@ def main():
         backup_saves(os.path.abspath('./backup/'), sys.argv[1])
 
     global DISABLE_DUPE_VALUES
-    DISABLE_DUPE_VALUES = not query_yn("是否保留重复项？")
+    DISABLE_DUPE_VALUES = not query_yn("是否保留重复项？/Allow duplicate values?")
 
     rev_lang[""] = "empty"
     rel_lang["empty"] = ""
