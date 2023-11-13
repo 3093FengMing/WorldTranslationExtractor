@@ -1,2 +1,5 @@
 default_lang*.json
 backup
+build
+dist
+WorldTranslationExtractor.spec
