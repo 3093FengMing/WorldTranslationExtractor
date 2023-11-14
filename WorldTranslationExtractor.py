@@ -91,7 +91,7 @@ def match_contents(match):
     rel_lang[rk] = plain
     # print(f'[contents] put key: {rk}: {rel_lang[rk]}')
     if DISABLE_DUPE_VALUES:
-        return f'"contents":{{"translate":"{rev_lang}"}}'
+        return f'"contents":{{"translate":"{rev_lang[plain]}"}}'
     return f'"contents":{{"translate":"{rk}"}}'
 
 
