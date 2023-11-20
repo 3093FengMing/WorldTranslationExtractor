@@ -75,7 +75,7 @@ def match_text(match, escaped=False):
     if plain == '':
         return f'\\"translate\\":\\"empty\\"' if escaped else f'"translate":"empty"'
     rel_lang[rk] = plain
-    # print(f'[json] put key: {rk}: {rel_lang[rk]}')
+    print(f'[json] put key: {rk}: {rel_lang[rk]}')
     if DISABLE_DUPE_VALUES:
         return f'\\"translate\\":\\"{rev_lang[plain]}\\"' if escaped else f'"translate":"{rev_lang[plain]}"'
     return f'\\"translate\\":\\"{rk}\\"' if escaped else f'"translate":"{rk}"'
@@ -89,7 +89,7 @@ def match_contents(match):
     if plain == '':
         return f'"contents":{{"translate":"empty"}}'
     rel_lang[rk] = plain
-    # print(f'[contents] put key: {rk}: {rel_lang[rk]}')
+    print(f'[contents] put key: {rk}: {rel_lang[rk]}')
     if DISABLE_DUPE_VALUES:
         return f'"contents":{{"translate":"{rev_lang[plain]}"}}'
     return f'"contents":{{"translate":"{rk}"}}'
@@ -104,7 +104,7 @@ def match_bossbar(match):
     if plain == '':
         return f'bossbar set {name} name {{"translate":"empty"}}'
     rel_lang[rk] = plain
-    # print(f'[bossbar] put key: {rk}: {rel_lang[rk]}')
+    print(f'[bossbar1] put key: {rk}: {rel_lang[rk]}')
     if DISABLE_DUPE_VALUES:
         return f'bossbar set {name} name {{"translate":"{rev_lang[plain]}"}}'
     return f'bossbar set {name} name {{"translate":"{rk}"}}'
@@ -119,7 +119,7 @@ def match_bossbar2(match):
     if plain == '':
         return f'bossbar add {name} {{"translate":"empty"}}'
     rel_lang[rk] = plain
-    # print(f'[bossbar] put key: {rk}: {rel_lang[rk]}')
+    print(f'[bossbar2] put key: {rk}: {rel_lang[rk]}')
     if DISABLE_DUPE_VALUES:
         return f'bossbar add {name} {{"translate":"{rev_lang[plain]}"}}'
     return f'bossbar add {name} {{"translate":"{rk}"}}'
@@ -139,7 +139,7 @@ def handle_item(item):
     changed = False
     id = str(item['id'])[10:]
     item_counts.setdefault(id, 1)
-    translation_cnt = len(rev_lang)
+    translation_cnt = len(rel_lang)
 
     try:
         set_key(f"item.{id}.{item_counts[id]}.name")
@@ -176,7 +176,7 @@ def handle_item(item):
     except KeyError:
         pass
 
-    if translation_cnt != len(rev_lang):
+    if translation_cnt != len(rel_lang):
         item_counts[id] += 1
 
     try:
@@ -195,7 +195,7 @@ def handle_item(item):
 def handle_container(container, type):
     changed = False
     block_counts.setdefault(type, 1)
-    translation_cnt = len(rev_lang)
+    translation_cnt = len(rel_lang)
 
     try:
         set_key(f"block.{type}.{block_counts[type]}.name")
@@ -204,7 +204,7 @@ def handle_container(container, type):
     except KeyError:
         pass
 
-    if translation_cnt != len(rev_lang):
+    if translation_cnt != len(rel_lang):
         block_counts[type] += 1
 
     for item in container['Items']:
@@ -239,7 +239,7 @@ def handle_decorated_pot(decorated_pot):
 
 def handle_command_block(command_block):
     block_counts.setdefault("command_block", 1)
-    translation_cnt = len(rev_lang)
+    translation_cnt = len(rel_lang)
     set_key(f"block.command_block.{block_counts['command_block']}.command")
 
     command = str(command_block['Command'])
@@ -250,7 +250,7 @@ def handle_command_block(command_block):
     result_command = REG5.sub(string=txt, repl=match_bossbar2)
     command_block['Command'] = n.TAG_String(result_command)
 
-    if translation_cnt != len(rev_lang):
+    if translation_cnt != len(rel_lang):
         block_counts["command_block"] += 1
 
     return True
@@ -258,7 +258,7 @@ def handle_command_block(command_block):
 
 def handle_sign(sign):
     block_counts.setdefault("sign", 1)
-    translation_cnt = len(rev_lang)
+    translation_cnt = len(rel_lang)
 
     if 'Text1' in sign.keys():
         set_key(f"block.sign.{block_counts['sign']}.text1")
@@ -280,7 +280,7 @@ def handle_sign(sign):
                 set_key(f"block.sign.{block_counts['sign']}.back_text{i + 1}")
                 sign['back_text']['messages'][i] = replace_component(sign['back_text']['messages'][i])
 
-    if translation_cnt != len(rev_lang):
+    if translation_cnt != len(rel_lang):
         block_counts["sign"] += 1
 
     return True
@@ -316,7 +316,7 @@ def handle_entity(entity, type):
     changed = False
     id = type if type is not None else (str(entity['id'])[10:] if "id" in entity else "unknown")
     entity_counts.setdefault(id, 1)
-    translation_cnt = len(rev_lang)
+    translation_cnt = len(rel_lang)
 
     try:
         set_key(f"entity.{id}.{entity_counts[id]}.name")
@@ -325,7 +325,7 @@ def handle_entity(entity, type):
     except KeyError:
         pass
 
-    if translation_cnt != len(rev_lang):
+    if translation_cnt != len(rel_lang):
         entity_counts[id] += 1
 
     try:
