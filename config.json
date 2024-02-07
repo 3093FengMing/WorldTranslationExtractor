@@ -1,0 +1,26 @@
+{
+  "settings": {
+    "backup": true,
+    "lang": {
+      "indent": 2,
+      "ensure_ascii": false,
+      "sort_keys": false
+    },
+    "keep_duplicate_keys": {
+      "datapacks": true,
+      "command_blocks": true,
+      "bossbar": true,
+      "scores_name": true,
+      "scores_teams_name": true,
+      "scores_teams_prefix": true,
+      "scores_teams_suffix": true,
+      "signs": false,
+      "containers_name": false,
+      "entities_name": false,
+      "items_name": false,
+      "items_lore": false,
+      "items_pages": false,
+      "items_title": false
+    }
+  }
+}

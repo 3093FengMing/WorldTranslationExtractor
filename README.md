@@ -1,4 +1,4 @@
-## World Translation Extractor
+## World Translation Extractor Modified (WTEM) 1.2
 Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob/main/WorldTranslationExtractor.py)
 
 ### Information
@@ -9,13 +9,12 @@ Install: `pip install amulet-map-editor`, `pip install tqdm`
 
 ### Changes
 
-1. Keep duplicate keys.
-2. Backup the world.
-3. Supports signs on 1.19+.
-4. Supports command blocks.
-5. Supports beehive and bee nest.
-6. Supports chiseled bookshelves.
-7. Convert to standard JSON format to generate language file.
+1. Allow to keep duplicate keys.
+2. Allow to backup the world.
+3. Support signs on 1.19+, chiseled bookshelves, decorated pots (1.19+), 
+command blocks, beehive and bee nest.
+4. Convert to standard JSON format to generate language file.
+5. Add config.
 
 ## Original Readme
 
@@ -28,8 +27,8 @@ Scans a full world searching for json `"text"` components and replaces them with
 Finds json components in:
 - Blocks
   - Spawners: SpawnData, SpawnPotentials
-  - Containers: items, container name (`"chest"`, `"furnace"`, `"shulker_box"`, `"barrel"`, `"smoker"`, `"blast_furnace"`, `"trapped_chest"`, `"hopper"`, `"dispenser"`, `"dropper"`, `"brewing_stand"`, `"campfire"`, <u>**`"chiseled_bookshelf"`**</u>)
-  - Signs: text1-4, <u>**front text, back text (1.19+)**</u>
+  - Containers: items, container name (`"chest"`, `"furnace"`, `"shulker_box"`, `"barrel"`, `"smoker"`, `"blast_furnace"`, `"trapped_chest"`, `"hopper"`, `"dispenser"`, `"dropper"`, `"brewing_stand"`, `"campfire"`, <u>**`"chiseled_bookshelf"`**</u>, <u>**`"decorated_pot"`**</u>)
+  - Signs: text1-4, <u>**front_text, back_text**</u>
   - Lecterns: Book
   - Jukeboxes: RecordItem
   - <u>**Beehives & Bee nests: Bees**
@@ -61,5 +60,3 @@ Finds json components in:
 - Structures: blocks, entities
 
 Usage: `python WorldTranslationExtractor.py <world>` (Modifies world, outputs `default_lang.json` in the working directory)
-
-Dependencies: `pip install amulet-map-editor` `pip install tqdm`
