@@ -553,8 +553,7 @@ def scan_datapacks(path):
 
 # main
 def gen_lang(path):
-    obj = json.dumps(rel_lang, indent=cfg_lang["indent"], ensure_ascii=cfg_lang["ensure_ascii"],
-                     sort_keys=cfg_lang["sort_keys"])
+    obj = json.dumps(rel_lang, indent=cfg_lang["indent"], ensure_ascii=cfg_lang["ensure_ascii"], sort_keys=cfg_lang["sort_keys"])
     with open(path, 'w', encoding="utf-8") as f:
         f.write(obj)
 
