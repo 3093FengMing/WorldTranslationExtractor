@@ -81,8 +81,8 @@ def match_text(match, escaped=False, dupe=False):
     rel_lang[rk] = plain
     print(f'[text] put key: {rk}: {rel_lang[rk]}')
     if dupe:
-        return f'\\"translate\\":\\"{rev_lang[plain]}\\"' if escaped else f'"translate":"{rev_lang[plain]}"'
-    return f'\\"translate\\":\\"{rk}\\"' if escaped else f'"translate":"{rk}"'
+        return f'\\"translate\\":\\"{rk}\\"' if escaped else f'"translate":"{rk}"'
+    return f'\\"translate\\":\\"{rev_lang[plain]}\\"' if escaped else f'"translate":"{rev_lang[plain]}"'
 
 
 def match_plain_text(match, dupe=False):
@@ -94,7 +94,7 @@ def match_plain_text(match, dupe=False):
         return f'{{"translate":"empty"}}'
     rel_lang[rk] = plain
     print(f'[plain] put key: {rk}: {rel_lang[rk]}')
-    if dupe:
+    if not dupe:
         return f'{{"translate":"{rev_lang[plain]}"}}'
     return f'{{"translate":"{rk}"}}'
 
@@ -108,7 +108,7 @@ def match_contents(match, dupe=False):
         return f'"contents":{{"translate":"empty"}}'
     rel_lang[rk] = plain
     print(f'[contents] put key: {rk}: {rel_lang[rk]}')
-    if dupe:
+    if not dupe:
         return f'"contents":{{"translate":"{rev_lang[plain]}"}}'
     return f'"contents":{{"translate":"{rk}"}}'
 
@@ -123,7 +123,7 @@ def match_bossbar(match, dupe=False):
         return f'bossbar set {name} name {{"translate":"empty"}}'
     rel_lang[rk] = plain
     print(f'[bossbar1] put key: {rk}: {rel_lang[rk]}')
-    if dupe:
+    if not dupe:
         return f'bossbar set {name} name {{"translate":"{rev_lang[plain]}"}}'
     return f'bossbar set {name} name {{"translate":"{rk}"}}'
 
@@ -138,7 +138,7 @@ def match_bossbar2(match, dupe=False):
         return f'bossbar add {name} {{"translate":"empty"}}'
     rel_lang[rk] = plain
     print(f'[bossbar2] put key: {rk}: {rel_lang[rk]}')
-    if dupe:
+    if not dupe:
         return f'bossbar add {name} {{"translate":"{rev_lang[plain]}"}}'
     return f'bossbar add {name} {{"translate":"{rk}"}}'
 
@@ -186,19 +186,20 @@ def handle_item(item):
         pass
 
     try:
-        title = item['tag']['title']
+        title = str(item['tag']['title'])
         if "display" not in item['tag']:
             item['tag']['display'] = n.TAG_Compound()
         if "Name" not in item['tag']['display']:
+            # TODO remember to sync it when match_text changed
             rk = f"item.{id}.{item_counts[id]}.title.1"
             rel_lang[rk] = title
-            print(f'[json] put key: {rk}: {rel_lang[rk]}')
+            print(f'[json book title] put key: {rk}: {rel_lang[rk]}')
             if title not in rev_lang:
                 rev_lang[title] = rk
             if cfg_dupe["items_title"] or cfg_dupe["items_all"]:
-                item['tag']['display']['Name'] = n.TAG_String(f'{{"translate":"{rev_lang[title]}","italic":false}}')
-            else:
                 item['tag']['display']['Name'] = n.TAG_String(f'{{"translate":"{rk}","italic":false}}')
+            else:
+                item['tag']['display']['Name'] = n.TAG_String(f'{{"translate":"{rev_lang[title]}","italic":false}}')
             changed = True
     except KeyError:
         pass
@@ -297,13 +298,11 @@ def handle_sign(sign):
         if 'front_text' in sign.keys():
             for i in range(len(sign['front_text']['messages'])):
                 set_key(f"block.sign.{block_counts['sign']}.front_text{i + 1}")
-                sign['front_text']['messages'][i] = replace_component(sign['front_text']['messages'][i],
-                                                                      cfg_dupe["signs"])
+                sign['front_text']['messages'][i] = replace_component(sign['front_text']['messages'][i], cfg_dupe["signs"])
         if 'back_text' in sign.keys():
             for i in range(len(sign['back_text']['messages'])):
                 set_key(f"block.sign.{block_counts['sign']}.back_text{i + 1}")
-                sign['back_text']['messages'][i] = replace_component(sign['back_text']['messages'][i],
-                                                                     cfg_dupe["signs"])
+                sign['back_text']['messages'][i] = replace_component(sign['back_text']['messages'][i], cfg_dupe["signs"])
 
     if translation_cnt != len(rel_lang):
         block_counts["sign"] += 1
