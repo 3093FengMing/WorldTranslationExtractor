@@ -1,4 +1,4 @@
-## World Translation Extractor Modified (WTEM) 1.2
+## World Translation Extractor Modified (WTEM) 1.3
 Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob/main/WorldTranslationExtractor.py)
 
 ### Information
@@ -15,6 +15,7 @@ Install: `pip install amulet-map-editor`, `pip install tqdm`
 command blocks, beehive and bee nest.
 4. Convert to standard JSON format to generate language file.
 5. Add config.
+6. Support display entities.
 
 ## Original Readme
 
@@ -42,6 +43,8 @@ Finds json components in:
   - Inventory
   - Villager offers
   - Passengers
+  - <u>**Text Display**</u>
+  - <u>**Item Display**</u>
 
 - Items
   - Name

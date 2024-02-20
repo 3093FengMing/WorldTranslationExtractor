@@ -18,16 +18,17 @@ cfg_dupe = dict()
 
 OLD_SPAWNER_FORMAT = False  # If this is false, uses 1.18+ nbt paths for spawners
 
-REG = re.compile(r'"text" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
-REG2 = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\.)*)\\"')
-REG3 = re.compile(r'"contents":"((?:[^"\\]|\\\\"|\\.)*)"')
-REG4 = re.compile(r'bossbar set ([^ ]+) name "(.*)"')
-REG5 = re.compile(r'bossbar add ([^ ]+) "(.*)"')
+REG_COMPONENT = re.compile(r'"text" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
+REG_COMPONENT_PLAIN = re.compile(r'"((?:[^"\\]|\\\\"|\\.)*)"')
+REG_COMPONENT_ESCAPED = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\.)*)\\"')
+REG_DATAPACK_CONTENTS = re.compile(r'"contents":"((?:[^"\\]|\\\\"|\\.)*)"')
+REG_BOSSBAR_SET_NAME = re.compile(r'bossbar set ([^ ]+) name "(.*)"')
+REG_BOSSBAR_ADD = re.compile(r'bossbar add ([^ ]+) "(.*)"')
 CONTAINERS = ["chest", "furnace", "shulker_box", "barrel", "smoker", "blast_furnace", "trapped_chest", "hopper",
               "dispenser", "dropper", "brewing_stand", "campfire", "chiseled_bookshelf"]
 
-rev_lang = dict()
-rel_lang = dict()
+rev_lang = dict()  # Keep duplicates (reversed)
+rel_lang = dict()  # Normal language file format
 
 item_counts = dict()
 block_counts = dict()
@@ -35,6 +36,7 @@ entity_counts = dict()
 
 key = "no_key"
 key_cnt = 0
+
 
 # keys
 def set_key(k):
@@ -50,12 +52,18 @@ def get_key():
 
 
 # match & replace
-def sub_replace(pattern: re.Pattern, string: str, repl, dupe=False):
-    return repl(pattern.match(string), dupe=dupe)
+def sub_replace(pattern: re.Pattern, string: str, repl, dupe=False, search_all=True):
+    match = pattern.search(string) if search_all else pattern.match(string)
+    if match is None:
+        return string
+    span = match.span()
+    ls = list(string)
+    ls[span[0]:span[1]] = repl(match, dupe=dupe)
+    return ''.join(ls)
 
 
 def get_plain_from_match(match, escaped=False, ord=1):
-    plain = match.group(ord)
+    plain = match if isinstance(match, str) else match.group(ord)
     if escaped:
         plain = re.sub(pattern=r'\\\\', string=plain, repl=r'\\')
     plain = re.sub(pattern=r'\\\\([^\\])', string=plain, repl=r'\\\1')
@@ -71,10 +79,24 @@ def match_text(match, escaped=False, dupe=False):
     if plain == '':
         return f'\\"translate\\":\\"empty\\"' if escaped else f'"translate":"empty"'
     rel_lang[rk] = plain
-    print(f'[json] put key: {rk}: {rel_lang[rk]}')
+    print(f'[text] put key: {rk}: {rel_lang[rk]}')
     if dupe:
         return f'\\"translate\\":\\"{rev_lang[plain]}\\"' if escaped else f'"translate":"{rev_lang[plain]}"'
     return f'\\"translate\\":\\"{rk}\\"' if escaped else f'"translate":"{rk}"'
+
+
+def match_plain_text(match, dupe=False):
+    plain = match.string[1:-1]
+    rk = get_key()
+    if plain not in rev_lang:
+        rev_lang[plain] = rk
+    if plain == '':
+        return f'{{"translate":"empty"}}'
+    rel_lang[rk] = plain
+    print(f'[plain] put key: {rk}: {rel_lang[rk]}')
+    if dupe:
+        return f'{{"translate":"{rev_lang[plain]}"}}'
+    return f'{{"translate":"{rk}"}}'
 
 
 def match_contents(match, dupe=False):
@@ -126,20 +148,23 @@ def match_text_escaped(match, dupe=False):
 
 
 def replace_component(text, dupe=False):
-    text = sub_replace(REG, str(text), match_text)
-    return n.TAG_String(sub_replace(REG2, text, match_text_escaped, dupe))
+    text = sub_replace(REG_COMPONENT_PLAIN, str(text), match_plain_text, dupe, False)
+    text = sub_replace(REG_COMPONENT, str(text), match_text, dupe)
+    return n.TAG_String(sub_replace(REG_COMPONENT_ESCAPED, text, match_text_escaped, dupe))
 
 
 # handler
 def handle_item(item):
     changed = False
+    if len(item) == 0:
+        return False
     id = str(item['id'])[10:]
     item_counts.setdefault(id, 1)
     translation_cnt = len(rel_lang)
 
     try:
         set_key(f"item.{id}.{item_counts[id]}.name")
-        item['tag']['display']['Name'] = replace_component(item['tag']['display']['Name'], cfg_dupe["items_name"])
+        item['tag']['display']['Name'] = replace_component(item['tag']['display']['Name'], cfg_dupe["items_name"] | cfg_dupe["items_all"])
         changed = True
     except KeyError:
         pass
@@ -147,7 +172,7 @@ def handle_item(item):
     try:
         for line in range(len(item['tag']['display']['Lore'])):
             set_key(f"item.{id}.{item_counts[id]}.lore.{line}")
-            item['tag']['display']['Lore'][line] = replace_component(item['tag']['display']['Lore'][line], cfg_dupe["items_lore"])
+            item['tag']['display']['Lore'][line] = replace_component(item['tag']['display']['Lore'][line], cfg_dupe["items_lore"] | cfg_dupe["items_all"])
         changed = True
     except KeyError:
         pass
@@ -155,7 +180,7 @@ def handle_item(item):
     try:
         for page in range(len(item['tag']['pages'])):
             set_key(f"item.{id}.{item_counts[id]}.page.{page}")
-            item['tag']['pages'][page] = replace_component(item['tag']['pages'][page], cfg_dupe["items_pages"])
+            item['tag']['pages'][page] = replace_component(item['tag']['pages'][page], cfg_dupe["items_pages"] | cfg_dupe["items_all"])
         changed = True
     except KeyError:
         pass
@@ -170,7 +195,7 @@ def handle_item(item):
             print(f'[json] put key: {rk}: {rel_lang[rk]}')
             if title not in rev_lang:
                 rev_lang[title] = rk
-            if cfg_dupe["items_title"]:
+            if cfg_dupe["items_title"] or cfg_dupe["items_all"]:
                 item['tag']['display']['Name'] = n.TAG_String(f'{{"translate":"{rev_lang[title]}","italic":false}}')
             else:
                 item['tag']['display']['Name'] = n.TAG_String(f'{{"translate":"{rk}","italic":false}}')
@@ -215,25 +240,21 @@ def handle_container(container, type):
     return changed
 
 
-def handle_jukebox(jukebox):
+def handle_item_entity_block(block, nbt_path):
     try:
-        return handle_item(jukebox['RecordItem'])
-    except KeyError:
-        pass
-    return False
-
-
-def handle_lectern(lectern):
-    try:
-        return handle_item(lectern['Book'])
-    except KeyError:
-        pass
-    return False
-
-
-def handle_decorated_pot(decorated_pot):
-    try:
-        return handle_item(decorated_pot['item'])
+        if isinstance(nbt_path, str):
+            return handle_item(block[nbt_path])
+        elif isinstance(nbt_path, list):
+            last_path = ""
+            last_tag = None
+            for path in nbt_path:
+                if last_path == "":
+                    last_path = path
+                    last_tag = block[last_path]
+                else:
+                    last_tag = block[last_path][path]
+                    last_path = path
+            return handle_item(last_tag)
     except KeyError:
         pass
     return False
@@ -245,11 +266,11 @@ def handle_command_block(command_block):
     set_key(f"block.command_block.{block_counts['command_block']}.command")
 
     command = str(command_block['Command'])
-    txt = sub_replace(REG, command, match_text, cfg_dupe["command_blocks"])
-    txt = sub_replace(REG2, txt, match_text_escaped, cfg_dupe["command_blocks"])
-    txt = sub_replace(REG3, txt, match_contents, cfg_dupe["command_blocks"])
-    txt = sub_replace(REG4, txt, match_bossbar, cfg_dupe["command_blocks"])
-    result_command = sub_replace(REG5, txt, match_bossbar2, cfg_dupe["command_blocks"])
+    txt = sub_replace(REG_COMPONENT, command, match_text, cfg_dupe["command_blocks"])
+    txt = sub_replace(REG_COMPONENT_ESCAPED, txt, match_text_escaped, cfg_dupe["command_blocks"])
+    txt = sub_replace(REG_DATAPACK_CONTENTS, txt, match_contents, cfg_dupe["command_blocks"])
+    txt = sub_replace(REG_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["command_blocks"])
+    result_command = sub_replace(REG_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["command_blocks"])
     command_block['Command'] = n.TAG_String(result_command)
 
     if translation_cnt != len(rel_lang):
@@ -276,11 +297,13 @@ def handle_sign(sign):
         if 'front_text' in sign.keys():
             for i in range(len(sign['front_text']['messages'])):
                 set_key(f"block.sign.{block_counts['sign']}.front_text{i + 1}")
-                sign['front_text']['messages'][i] = replace_component(sign['front_text']['messages'][i], cfg_dupe["signs"])
+                sign['front_text']['messages'][i] = replace_component(sign['front_text']['messages'][i],
+                                                                      cfg_dupe["signs"])
         if 'back_text' in sign.keys():
             for i in range(len(sign['back_text']['messages'])):
                 set_key(f"block.sign.{block_counts['sign']}.back_text{i + 1}")
-                sign['back_text']['messages'][i] = replace_component(sign['back_text']['messages'][i], cfg_dupe["signs"])
+                sign['back_text']['messages'][i] = replace_component(sign['back_text']['messages'][i],
+                                                                     cfg_dupe["signs"])
 
     if translation_cnt != len(rel_lang):
         block_counts["sign"] += 1
@@ -320,58 +343,55 @@ def handle_entity(entity, type):
     entity_counts.setdefault(id, 1)
     translation_cnt = len(rel_lang)
 
-    try:
+    if "CustomName" in entity:
         set_key(f"entity.{id}.{entity_counts[id]}.name")
         entity['CustomName'] = replace_component(entity['CustomName'], cfg_dupe["entities_name"])
         changed = True
-    except KeyError:
-        pass
 
     if translation_cnt != len(rel_lang):
         entity_counts[id] += 1
 
-    try:
+    # Entity
+    if "Items" in entity:
         for i in entity['Items']:
             changed |= handle_item(i)
-    except KeyError:
-        pass
 
-    try:
+    if "ArmorItems" in entity:
         for i in entity['ArmorItems']:
             changed |= handle_item(i)
-    except KeyError:
-        pass
 
-    try:
+    if "HandItems" in entity:
         for i in entity['HandItems']:
             changed |= handle_item(i)
-    except KeyError:
-        pass
 
-    try:
+    if "Item" in entity:
         changed |= handle_item(entity['Item'])
-    except KeyError:
-        pass
 
-    try:
+    if "Inventory" in entity:
         for i in entity['Inventory']:
             changed |= handle_item(i)
-    except KeyError:
-        pass
 
-    try:
+    # Villager
+    if "Offers" in entity and "Recipes" in entity["Offers"]:
         for t in entity['Offers']['Recipes']:
             changed |= handle_item(t['buy'])
             changed |= handle_item(t['buyB'])
             changed |= handle_item(t['sell'])
-    except KeyError:
-        pass
 
-    try:
+    # Can be ridden
+    if "Passengers" in entity:
         for p in entity['Passengers']:
             changed |= handle_entity(p, None)
-    except KeyError:
-        pass
+
+    # Display entity
+    if "text" in entity:
+        set_key(f"entity.{id}.{entity_counts[id]}.text")
+        entity['text'] = replace_component(entity['text'], cfg_dupe["show_entity_text"])
+        changed = True
+
+    if "item" in entity:
+        changed |= handle_item(entity['item'])
+
     return changed
 
 
@@ -383,11 +403,11 @@ def handle_block_entity_base(block_entity, name):
     elif name == "sign":
         return handle_sign(block_entity)
     elif name == "lectern":
-        return handle_lectern(block_entity)
+        return handle_item_entity_block(block_entity, "Book")
     elif name == "jukebox":
-        return handle_jukebox(block_entity)
+        return handle_item_entity_block(block_entity, "RecordItem")
     elif name == "decorated_pot":
-        return handle_decorated_pot(block_entity)
+        return handle_item_entity_block(block_entity, "item")
     elif name == "command_block":
         return handle_command_block(block_entity)
     elif name == "beehive" or name == "bee_nest":
@@ -396,7 +416,7 @@ def handle_block_entity_base(block_entity, name):
 
 
 def handle_block_entity_nbt(block_entity):
-    return handle_block_entity_base(block_entity, str(block_entity['id'])[10:])
+    return handle_block_entity_base(block_entity, str(block_entity['id'])[10:])  # after "minecraft:"
 
 
 def handle_block_entity(block_entity):
@@ -455,14 +475,14 @@ def scan_scores(path):
         scores = n.load(path)
         for s in scores.tag['data']['Objectives']:
             set_key(f"score.{s['Name']}.name")
-            s['DisplayName'] = replace_component(s['DisplayName'], cfg_dupe["scores_name"])
+            s['DisplayName'] = replace_component(s['DisplayName'], cfg_dupe["scores_name"] | cfg_dupe["scores_all"])
         for t in scores.tag['data']['Teams']:
             set_key(f"score.{t['Name']}.name")
-            t['DisplayName'] = replace_component(t['DisplayName'], cfg_dupe["scores_teams_name"])
+            t['DisplayName'] = replace_component(t['DisplayName'], cfg_dupe["scores_teams_name"] | cfg_dupe["scores_all"])
             set_key(f"score.{t['Name']}.prefix")
-            t['MemberNamePrefix'] = replace_component(t['MemberNamePrefix'], cfg_dupe["scores_teams_prefix"])
+            t['MemberNamePrefix'] = replace_component(t['MemberNamePrefix'], cfg_dupe["scores_teams_prefix"] | cfg_dupe["scores_all"])
             set_key(f"score.{t['Name']}.suffix")
-            t['MemberNameSuffix'] = replace_component(t['MemberNameSuffix'], cfg_dupe["scores_teams_suffix"])
+            t['MemberNameSuffix'] = replace_component(t['MemberNameSuffix'], cfg_dupe["scores_teams_suffix"] | cfg_dupe["scores_all"])
         scores.save_to(path)
     except Exception as e:
         print("无法访问计分板数据：/No scoreboard data could be accessed: ", e)
@@ -514,11 +534,11 @@ def scan_file(path, start):
             for i in range(len(line)):
                 if line[i].startswith('#'):
                     continue
-                txt = sub_replace(REG, line[i], match_text, cfg_dupe["datapacks"])
-                txt = sub_replace(REG2, txt, match_text_escaped, cfg_dupe["datapacks"])
-                txt = sub_replace(REG3, txt, match_contents, cfg_dupe["datapacks"])
-                txt = sub_replace(REG4, txt, match_bossbar, cfg_dupe["datapacks"])
-                line[i] = sub_replace(REG5, txt, match_bossbar2, cfg_dupe["datapacks"])
+                txt = sub_replace(REG_COMPONENT, line[i], match_text, cfg_dupe["datapacks"])
+                txt = sub_replace(REG_COMPONENT_ESCAPED, txt, match_text_escaped, cfg_dupe["datapacks"])
+                txt = sub_replace(REG_DATAPACK_CONTENTS, txt, match_contents, cfg_dupe["datapacks"])
+                txt = sub_replace(REG_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["datapacks"])
+                line[i] = sub_replace(REG_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["datapacks"])
         with open(path, 'w', encoding="utf-8") as f:
             f.writelines(line)
     except Exception as e:
@@ -533,7 +553,8 @@ def scan_datapacks(path):
 
 # main
 def gen_lang(path):
-    obj = json.dumps(rel_lang, indent=cfg_lang["indent"], ensure_ascii=cfg_lang["ensure_ascii"], sort_keys=cfg_lang["sort_keys"])
+    obj = json.dumps(rel_lang, indent=cfg_lang["indent"], ensure_ascii=cfg_lang["ensure_ascii"],
+                     sort_keys=cfg_lang["sort_keys"])
     with open(path, 'w', encoding="utf-8") as f:
         f.write(obj)
 
@@ -568,23 +589,23 @@ def main():
         exit(0)
 
     if cfg_settings["backup"]:
-        print(f"备份中: {os.path.abspath('.')}\\backup")
+        print(f"备份中: /Backup: {os.path.abspath('.')}\\backup")
         backup_saves(os.path.abspath('./backup/'), sys.argv[1])
 
     rev_lang[""] = "empty"
     rel_lang["empty"] = ""
 
     print("\n扫描区块.../Scanning chunks...")
-    try:
-        level = amulet.load_level(sys.argv[1])
-        if level.level_wrapper.version < 2826:
-            global OLD_SPAWNER_FORMAT
-            OLD_SPAWNER_FORMAT = True
-            print("使用旧版刷怪笼格式/Using old spawner format.")
-        scan_world(level)
-    except Exception as e:
-        print("加载存档时出错: /Error loading world: ", e)
-        exit(1)
+    # try:
+    level = amulet.load_level(sys.argv[1])
+    if level.level_wrapper.version < 2826:
+        global OLD_SPAWNER_FORMAT
+        OLD_SPAWNER_FORMAT = True
+        print("使用旧版刷怪笼格式/Using old spawner format.")
+    scan_world(level)
+    # except Exception as e:
+    #     print("加载存档时出错: /Error loading world: ", e)
+    #     exit(1)
 
     print("\n扫描杂项NBT/Scanning misc NBT...")
     scan_scores(sys.argv[1] + "/data/scoreboard.dat")

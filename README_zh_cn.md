@@ -1,4 +1,4 @@
-## 存档翻译提取器 (WTEM) 1.2
+## 存档翻译提取器 (WTEM) 1.3
 World Translation Extractor Modified
 
 Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob/main/WorldTranslationExtractor.py)
@@ -16,6 +16,7 @@ Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob
 3. 支持 1.19+ 的告示牌、雕纹书架、饰纹陶罐(1.19+)、命令方块、蜂窝以及蜂巢。
 4. 将输出转为标准的JSON语言文件。
 5. 加入配置文件。
+6. 支持展示实体。
 
 ## 原Readme
 
@@ -43,6 +44,8 @@ Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob
   - Inventory (物品栏)
   - Villager offers (村民交易)
   - Passengers (乘骑实体)
+  - <u>**Text Display (文本展示实体)**</u>
+  - <u>**Item Display (物品展示实体)**</u>
 
 - 物品
   - Name (名称)
