@@ -577,12 +577,15 @@ def main():
 | 使用Amulet核心                   |
 +==================================+
 ''')
-    with open("config.json", "r", encoding="utf-8") as file_cfg:
-        global cfg_settings, cfg_dupe, cfg_lang
-        config = json.loads(file_cfg.read())
-        cfg_settings = config["settings"]
-        cfg_dupe = cfg_settings["keep_duplicate_keys"]
-        cfg_lang = cfg_settings["lang"]
+    try:
+        with open("config.json", "r", encoding="utf-8") as file_cfg:
+            global cfg_settings, cfg_dupe, cfg_lang
+            config = json.loads(file_cfg.read())
+            cfg_settings = config["settings"]
+            cfg_dupe = cfg_settings["keep_duplicate_keys"]
+            cfg_lang = cfg_settings["lang"]
+    except Exception as e:
+        print("在打开config.json时发生一个错误: /An error occurred while opening the file config.json: ", e)
 
     if len(sys.argv) < 2:
         print(f"用法: python {sys.argv[0]} <存档>/Usage: python {sys.argv[0]} <world>")
