@@ -600,16 +600,16 @@ def main():
     rel_lang["empty"] = ""
 
     print("\n扫描区块.../Scanning chunks...")
-    # try:
-    level = amulet.load_level(sys.argv[1])
-    if level.level_wrapper.version < 2826:
-        global OLD_SPAWNER_FORMAT
-        OLD_SPAWNER_FORMAT = True
-        print("使用旧版刷怪笼格式/Using old spawner format.")
-    scan_world(level)
-    # except Exception as e:
-    #     print("加载存档时出错: /Error loading world: ", e)
-    #     exit(1)
+    try:
+        level = amulet.load_level(sys.argv[1])
+        if level.level_wrapper.version < 2826:
+            global OLD_SPAWNER_FORMAT
+            OLD_SPAWNER_FORMAT = True
+            print("使用旧版刷怪笼格式/Using old spawner format.")
+        scan_world(level)
+    except Exception as e:
+        print("加载存档时出错: /Error loading world: ", e)
+        exit(1)
 
     print("\n扫描杂项NBT/Scanning misc NBT...")
     scan_scores(sys.argv[1] + "/data/scoreboard.dat")
