@@ -53,13 +53,22 @@ def get_key():
 
 # match & replace
 def sub_replace(pattern: re.Pattern, string: str, repl, dupe=False, search_all=True):
-    match = pattern.search(string) if search_all else pattern.match(string)
-    if match is None:
-        return string
-    span = match.span()
     ls = list(string)
-    ls[span[0]:span[1]] = repl(match, dupe=dupe)
-    return ''.join(ls)
+    if search_all:
+        last_pos = 0
+        match = pattern.search(string, last_pos)
+        # can delete the 2 lines below
+        # if match is None:
+        #     return string
+        while match is not None:
+            span = match.span()
+            ls[span[0]:span[1]] = repl(match, dupe=dupe)
+            last_pos = span[1]
+            match = pattern.search(''.join(ls), last_pos)
+        return ''.join(ls)
+    else:
+        match = pattern.match(string)
+        return string if match is None else repl(match, dupe=dupe)
 
 
 def get_plain_from_match(match, escaped=False, ord=1):
@@ -154,7 +163,7 @@ def replace_component(text, dupe=False):
 
 
 # handler
-def handle_item(item):
+def handle_item(item, dupe):
     changed = False
     if len(item) == 0:
         return False
@@ -164,7 +173,7 @@ def handle_item(item):
 
     try:
         set_key(f"item.{id}.{item_counts[id]}.name")
-        item['tag']['display']['Name'] = replace_component(item['tag']['display']['Name'], cfg_dupe["items_name"] | cfg_dupe["items_all"])
+        item['tag']['display']['Name'] = replace_component(item['tag']['display']['Name'], dupe | cfg_dupe["items_name"] | cfg_dupe["items_all"])
         changed = True
     except KeyError:
         pass
@@ -172,7 +181,7 @@ def handle_item(item):
     try:
         for line in range(len(item['tag']['display']['Lore'])):
             set_key(f"item.{id}.{item_counts[id]}.lore.{line}")
-            item['tag']['display']['Lore'][line] = replace_component(item['tag']['display']['Lore'][line], cfg_dupe["items_lore"] | cfg_dupe["items_all"])
+            item['tag']['display']['Lore'][line] = replace_component(item['tag']['display']['Lore'][line], dupe | cfg_dupe["items_lore"] | cfg_dupe["items_all"])
         changed = True
     except KeyError:
         pass
@@ -180,7 +189,7 @@ def handle_item(item):
     try:
         for page in range(len(item['tag']['pages'])):
             set_key(f"item.{id}.{item_counts[id]}.page.{page}")
-            item['tag']['pages'][page] = replace_component(item['tag']['pages'][page], cfg_dupe["items_pages"] | cfg_dupe["items_all"])
+            item['tag']['pages'][page] = replace_component(item['tag']['pages'][page], dupe | cfg_dupe["items_pages"] | cfg_dupe["items_all"])
         changed = True
     except KeyError:
         pass
@@ -196,7 +205,7 @@ def handle_item(item):
             print(f'[json book title] put key: {rk}: {rel_lang[rk]}')
             if title not in rev_lang:
                 rev_lang[title] = rk
-            if cfg_dupe["items_title"] or cfg_dupe["items_all"]:
+            if dupe | cfg_dupe["items_title"] or cfg_dupe["items_all"]:
                 item['tag']['display']['Name'] = n.TAG_String(f'{{"translate":"{rk}","italic":false}}')
             else:
                 item['tag']['display']['Name'] = n.TAG_String(f'{{"translate":"{rev_lang[title]}","italic":false}}')
@@ -236,7 +245,7 @@ def handle_container(container, type):
         block_counts[type] += 1
 
     for item in container['Items']:
-        changed |= handle_item(item)
+        changed |= handle_item(item, cfg_dupe["items_in_same"])
 
     return changed
 
@@ -267,7 +276,8 @@ def handle_command_block(command_block):
     set_key(f"block.command_block.{block_counts['command_block']}.command")
 
     command = str(command_block['Command'])
-    txt = sub_replace(REG_COMPONENT, command, match_text, cfg_dupe["command_blocks"])
+    txt = sub_replace(REG_COMPONENT_PLAIN, command, match_text, cfg_dupe["datapacks"])
+    txt = sub_replace(REG_COMPONENT, txt, match_text, cfg_dupe["command_blocks"])
     txt = sub_replace(REG_COMPONENT_ESCAPED, txt, match_text_escaped, cfg_dupe["command_blocks"])
     txt = sub_replace(REG_DATAPACK_CONTENTS, txt, match_contents, cfg_dupe["command_blocks"])
     txt = sub_replace(REG_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["command_blocks"])
@@ -533,7 +543,8 @@ def scan_file(path, start):
             for i in range(len(line)):
                 if line[i].startswith('#'):
                     continue
-                txt = sub_replace(REG_COMPONENT, line[i], match_text, cfg_dupe["datapacks"])
+                txt = sub_replace(REG_COMPONENT_PLAIN, line[i], match_text, cfg_dupe["datapacks"])
+                txt = sub_replace(REG_COMPONENT, txt, match_text, cfg_dupe["datapacks"])
                 txt = sub_replace(REG_COMPONENT_ESCAPED, txt, match_text_escaped, cfg_dupe["datapacks"])
                 txt = sub_replace(REG_DATAPACK_CONTENTS, txt, match_contents, cfg_dupe["datapacks"])
                 txt = sub_replace(REG_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["datapacks"])
@@ -567,14 +578,13 @@ def backup_saves(path, source):
 
 
 def main():
-    print('''
-+==================================+
-| [Chinese] 存档翻译提取器(魔改)   |
-| 原作者Suso                       |
-| 魔改作者FengMing3093             |
-| 使用Amulet核心                   |
-+==================================+
-''')
+    print("+===========[Chinese]===========+")
+    print("{0}\t{1:<20}\t{2:^1}".format("|", "存档翻译提取器(魔改) 1.5", "|"))
+    print("{0}\t{1:<20}\t{2:^9}".format("|", "原作者Suso", "|"))
+    print("{0}\t{1:<20}\t{2:^9}".format("|", "魔改作者FengMing3093", "|"))
+    print("{0}\t{1:<20}\t{2:^9}".format("|", "使用Amulet核心", "|"))
+    print("+===============================+")
+
     try:
         with open("config.json", "r", encoding="utf-8") as file_cfg:
             global cfg_settings, cfg_dupe, cfg_lang

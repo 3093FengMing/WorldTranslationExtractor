@@ -19,6 +19,7 @@
       "containers_name": false,
       "entities_name": false,
       "show_entity_text": false,
+      "items_in_same": true,
       "items_all": false,
       "items_name": false,
       "items_lore": false,
