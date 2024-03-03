@@ -1,4 +1,4 @@
-## World Translation Extractor Modified (WTEM) 1.5
+## World Translation Extractor Modified (WTEM) 1.6
 Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob/main/WorldTranslationExtractor.py)
 
 ### Information

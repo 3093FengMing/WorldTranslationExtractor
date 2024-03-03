@@ -55,16 +55,24 @@ def get_key():
 def sub_replace(pattern: re.Pattern, string: str, repl, dupe=False, search_all=True):
     ls = list(string)
     if search_all:
+        endless_count = 0
+        last_match = None
         last_pos = 0
         match = pattern.search(string, last_pos)
         # can delete the 2 lines below
         # if match is None:
         #     return string
         while match is not None:
+            if last_match is not None and last_match.string == match.string:
+                endless_count += 1
+                if endless_count >= 200:
+                    print("ENDLESS LOOP HERE: " + string)
+                    break  # prevent endless loop
             span = match.span()
             ls[span[0]:span[1]] = repl(match, dupe=dupe)
             last_pos = span[1]
             match = pattern.search(''.join(ls), last_pos)
+            last_match = match
         return ''.join(ls)
     else:
         match = pattern.match(string)
@@ -88,9 +96,10 @@ def match_text(match, escaped=False, dupe=False):
     if plain == '':
         return f'\\"translate\\":\\"empty\\"' if escaped else f'"translate":"empty"'
     rel_lang[rk] = plain
-    print(f'[text] put key: {rk}: {rel_lang[rk]}')
     if dupe:
+        print(f'[text dupeIf] put key: {rk}: {rel_lang[rk]}')
         return f'\\"translate\\":\\"{rk}\\"' if escaped else f'"translate":"{rk}"'
+    print(f'[text dupeElse] put key: {rev_lang[plain]}: {plain}')
     return f'\\"translate\\":\\"{rev_lang[plain]}\\"' if escaped else f'"translate":"{rev_lang[plain]}"'
 
 
@@ -102,10 +111,11 @@ def match_plain_text(match, dupe=False):
     if plain == '':
         return f'{{"translate":"empty"}}'
     rel_lang[rk] = plain
-    print(f'[plain] put key: {rk}: {rel_lang[rk]}')
-    if not dupe:
-        return f'{{"translate":"{rev_lang[plain]}"}}'
-    return f'{{"translate":"{rk}"}}'
+    if dupe:
+        print(f'[plain dupeIf] put key: {rk}: {rel_lang[rk]}')
+        return f'{{"translate":"{rk}"}}'
+    print(f'[plain dupeElse] put key: {rev_lang[plain]}: {plain}')
+    return f'{{"translate":"{rev_lang[plain]}"}}'
 
 
 def match_contents(match, dupe=False):
@@ -116,10 +126,11 @@ def match_contents(match, dupe=False):
     if plain == '':
         return f'"contents":{{"translate":"empty"}}'
     rel_lang[rk] = plain
-    print(f'[contents] put key: {rk}: {rel_lang[rk]}')
-    if not dupe:
-        return f'"contents":{{"translate":"{rev_lang[plain]}"}}'
-    return f'"contents":{{"translate":"{rk}"}}'
+    if dupe:
+        print(f'[contents dupeIf] put key: {rk}: {rel_lang[rk]}')
+        return f'"contents":{{"translate":"{rk}"}}'
+    print(f'[contents dupeElse] put key: {rev_lang[plain]}: {plain}')
+    return f'"contents":{{"translate":"{rev_lang[plain]}"}}'
 
 
 def match_bossbar(match, dupe=False):
@@ -131,10 +142,11 @@ def match_bossbar(match, dupe=False):
     if plain == '':
         return f'bossbar set {name} name {{"translate":"empty"}}'
     rel_lang[rk] = plain
-    print(f'[bossbar1] put key: {rk}: {rel_lang[rk]}')
-    if not dupe:
-        return f'bossbar set {name} name {{"translate":"{rev_lang[plain]}"}}'
-    return f'bossbar set {name} name {{"translate":"{rk}"}}'
+    if dupe:
+        print(f'[bossbar set dupeIf] put key: {rk}: {rel_lang[rk]}')
+        return f'bossbar set {name} name {{"translate":"{rk}"}}'
+    print(f'[bossbar set dupeElse] put key: {rev_lang[plain]}: {plain}')
+    return f'bossbar set {name} name {{"translate":"{rev_lang[plain]}"}}'
 
 
 def match_bossbar2(match, dupe=False):
@@ -146,10 +158,11 @@ def match_bossbar2(match, dupe=False):
     if plain == '':
         return f'bossbar add {name} {{"translate":"empty"}}'
     rel_lang[rk] = plain
-    print(f'[bossbar2] put key: {rk}: {rel_lang[rk]}')
-    if not dupe:
-        return f'bossbar add {name} {{"translate":"{rev_lang[plain]}"}}'
-    return f'bossbar add {name} {{"translate":"{rk}"}}'
+    if dupe:
+        print(f'[bossbar add dupeIf] put key: {rk}: {rel_lang[rk]}')
+        return f'bossbar add {name} {{"translate":"{rk}"}}'
+    print(f'[bossbar add dupeElse] put key: {rev_lang[plain]}: {plain}')
+    return f'bossbar add {name} {{"translate":"{rev_lang[plain]}"}}'
 
 
 def match_text_escaped(match, dupe=False):
@@ -163,7 +176,7 @@ def replace_component(text, dupe=False):
 
 
 # handler
-def handle_item(item, dupe):
+def handle_item(item, dupe=False):
     changed = False
     if len(item) == 0:
         return False
@@ -202,12 +215,13 @@ def handle_item(item, dupe):
             # TODO remember to sync it when match_text changed
             rk = f"item.{id}.{item_counts[id]}.title.1"
             rel_lang[rk] = title
-            print(f'[json book title] put key: {rk}: {rel_lang[rk]}')
             if title not in rev_lang:
                 rev_lang[title] = rk
-            if dupe | cfg_dupe["items_title"] or cfg_dupe["items_all"]:
+            if dupe or cfg_dupe["items_title"] or cfg_dupe["items_all"]:
+                print(f'[json book title dupeIf] put key: {rk}: {rel_lang[rk]}')
                 item['tag']['display']['Name'] = n.TAG_String(f'{{"translate":"{rk}","italic":false}}')
             else:
+                print(f'[json book title dupeElse] put key: {rev_lang[title]}: {title}')
                 item['tag']['display']['Name'] = n.TAG_String(f'{{"translate":"{rev_lang[title]}","italic":false}}')
             changed = True
     except KeyError:
@@ -276,9 +290,9 @@ def handle_command_block(command_block):
     set_key(f"block.command_block.{block_counts['command_block']}.command")
 
     command = str(command_block['Command'])
-    txt = sub_replace(REG_COMPONENT_PLAIN, command, match_text, cfg_dupe["datapacks"])
-    txt = sub_replace(REG_COMPONENT, txt, match_text, cfg_dupe["command_blocks"])
+    txt = sub_replace(REG_COMPONENT, command, match_text, cfg_dupe["command_blocks"])
     txt = sub_replace(REG_COMPONENT_ESCAPED, txt, match_text_escaped, cfg_dupe["command_blocks"])
+    txt = sub_replace(REG_COMPONENT_PLAIN, txt, match_text, cfg_dupe["command_blocks"], False)
     txt = sub_replace(REG_DATAPACK_CONTENTS, txt, match_contents, cfg_dupe["command_blocks"])
     txt = sub_replace(REG_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["command_blocks"])
     result_command = sub_replace(REG_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["command_blocks"])
@@ -543,9 +557,9 @@ def scan_file(path, start):
             for i in range(len(line)):
                 if line[i].startswith('#'):
                     continue
-                txt = sub_replace(REG_COMPONENT_PLAIN, line[i], match_text, cfg_dupe["datapacks"])
-                txt = sub_replace(REG_COMPONENT, txt, match_text, cfg_dupe["datapacks"])
+                txt = sub_replace(REG_COMPONENT, line[i], match_text, cfg_dupe["datapacks"])
                 txt = sub_replace(REG_COMPONENT_ESCAPED, txt, match_text_escaped, cfg_dupe["datapacks"])
+                txt = sub_replace(REG_COMPONENT_PLAIN, txt, match_text, cfg_dupe["datapacks"], False)
                 txt = sub_replace(REG_DATAPACK_CONTENTS, txt, match_contents, cfg_dupe["datapacks"])
                 txt = sub_replace(REG_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["datapacks"])
                 line[i] = sub_replace(REG_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["datapacks"])
@@ -579,7 +593,7 @@ def backup_saves(path, source):
 
 def main():
     print("+===========[Chinese]===========+")
-    print("{0}\t{1:<20}\t{2:^1}".format("|", "存档翻译提取器(魔改) 1.5", "|"))
+    print("{0}\t{1:<20}\t{2:^1}".format("|", "存档翻译提取器(魔改) 1.6", "|"))
     print("{0}\t{1:<20}\t{2:^9}".format("|", "原作者Suso", "|"))
     print("{0}\t{1:<20}\t{2:^9}".format("|", "魔改作者FengMing3093", "|"))
     print("{0}\t{1:<20}\t{2:^9}".format("|", "使用Amulet核心", "|"))
