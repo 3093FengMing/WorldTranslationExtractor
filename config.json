@@ -1,6 +1,7 @@
 {
   "settings": {
     "backup": true,
+    "components_max": 200,
     "lang": {
       "indent": 2,
       "ensure_ascii": false,
@@ -25,6 +26,11 @@
       "items_lore": true,
       "items_pages": false,
       "items_title": false
+    },
+    "default_keys": {
+      "": "wtem.empty",
+      " ": "wtem.space",
+      "(+NBT)": "wtem.nbt_lore"
     }
   }
 }

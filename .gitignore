@@ -5,5 +5,6 @@ build
 dist
 WorldTranslationExtractor.spec
 packer.bat
+test.py
 
 .idea

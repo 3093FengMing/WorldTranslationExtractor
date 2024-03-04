@@ -10,15 +10,16 @@ from tqdm import tqdm
 
 # Config
 
-cfg_lang = dict()
 cfg_settings = dict()
+cfg_lang = dict()
 cfg_dupe = dict()
+cfg_default = dict()
 
 # REG
 
 OLD_SPAWNER_FORMAT = False  # If this is false, uses 1.18+ nbt paths for spawners
 
-REG_COMPONENT = re.compile(r'"text" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
+REG_COMPONENT = re.compile(r'"text" *: *"((?:[^"]|\\\\"|\\.)*)"')
 REG_COMPONENT_PLAIN = re.compile(r'"((?:[^"\\]|\\\\"|\\.)*)"')
 REG_COMPONENT_ESCAPED = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\.)*)\\"')
 REG_DATAPACK_CONTENTS = re.compile(r'"contents":"((?:[^"\\]|\\\\"|\\.)*)"')
@@ -55,19 +56,18 @@ def get_key():
 def sub_replace(pattern: re.Pattern, string: str, repl, dupe=False, search_all=True):
     ls = list(string)
     if search_all:
-        endless_count = 0
+        loop_count = 0
         last_match = None
         last_pos = 0
         match = pattern.search(string, last_pos)
         # can delete the 2 lines below
-        # if match is None:
-        #     return string
+        if match is None:
+            return string
         while match is not None:
             if last_match is not None and last_match.string == match.string:
-                endless_count += 1
-                if endless_count >= 200:
-                    print("ENDLESS LOOP HERE: " + string)
-                    break  # prevent endless loop
+                loop_count += 1
+                if loop_count >= cfg_settings['components_max']:
+                    raise Exception(f"TOO MANY COMPONENTS HERE: {string}")
             span = match.span()
             ls[span[0]:span[1]] = repl(match, dupe=dupe)
             last_pos = span[1]
@@ -93,8 +93,9 @@ def match_text(match, escaped=False, dupe=False):
     rk = get_key()
     if plain not in rev_lang:
         rev_lang[plain] = rk
-    if plain == '':
-        return f'\\"translate\\":\\"empty\\"' if escaped else f'"translate":"empty"'
+    if plain in cfg_default:
+        print(f'[text default] {cfg_default[plain]}: {plain}')
+        return f'\\"translate\\":\\"{cfg_default[plain]}\\"' if escaped else f'"translate":"{cfg_default[plain]}"'
     rel_lang[rk] = plain
     if dupe:
         print(f'[text dupeIf] put key: {rk}: {rel_lang[rk]}')
@@ -108,8 +109,9 @@ def match_plain_text(match, dupe=False):
     rk = get_key()
     if plain not in rev_lang:
         rev_lang[plain] = rk
-    if plain == '':
-        return f'{{"translate":"empty"}}'
+    if plain in cfg_default:
+        print(f'[plain default] {cfg_default[plain]}: {plain}')
+        return f'"translate":"{cfg_default[plain]}"'
     rel_lang[rk] = plain
     if dupe:
         print(f'[plain dupeIf] put key: {rk}: {rel_lang[rk]}')
@@ -123,8 +125,9 @@ def match_contents(match, dupe=False):
     rk = get_key()
     if plain not in rev_lang:
         rev_lang[plain] = rk
-    if plain == '':
-        return f'"contents":{{"translate":"empty"}}'
+    if plain in cfg_default:
+        print(f'[contents default] {cfg_default[plain]}: {plain}')
+        return f'"contents":{{{cfg_default[plain]}}}'
     rel_lang[rk] = plain
     if dupe:
         print(f'[contents dupeIf] put key: {rk}: {rel_lang[rk]}')
@@ -139,8 +142,9 @@ def match_bossbar(match, dupe=False):
     rk = get_key()
     if plain not in rev_lang:
         rev_lang[plain] = rk
-    if plain == '':
-        return f'bossbar set {name} name {{"translate":"empty"}}'
+    if plain in cfg_default:
+        print(f'[bossbar set default] {cfg_default[plain]}: {plain}')
+        return f'bossbar set {name} name {{{cfg_default[plain]}}}'
     rel_lang[rk] = plain
     if dupe:
         print(f'[bossbar set dupeIf] put key: {rk}: {rel_lang[rk]}')
@@ -155,8 +159,9 @@ def match_bossbar2(match, dupe=False):
     rk = get_key()
     if plain not in rev_lang:
         rev_lang[plain] = rk
-    if plain == '':
-        return f'bossbar add {name} {{"translate":"empty"}}'
+    if plain in cfg_default:
+        print(f'[bossbar add default] {cfg_default[plain]}: {plain}')
+        return f'bossbar add {name} name {{{cfg_default[plain]}}}'
     rel_lang[rk] = plain
     if dupe:
         print(f'[bossbar add dupeIf] put key: {rk}: {rel_lang[rk]}')
@@ -213,6 +218,7 @@ def handle_item(item, dupe=False):
             item['tag']['display'] = n.TAG_Compound()
         if "Name" not in item['tag']['display']:
             # TODO remember to sync it when match_text changed
+            # NOT use default keys
             rk = f"item.{id}.{item_counts[id]}.title.1"
             rel_lang[rk] = title
             if title not in rev_lang:
@@ -593,7 +599,7 @@ def backup_saves(path, source):
 
 def main():
     print("+===========[Chinese]===========+")
-    print("{0}\t{1:<20}\t{2:^1}".format("|", "存档翻译提取器(魔改) 1.6", "|"))
+    print("{0}\t{1:<20}\t{2:^1}".format("|", "存档翻译提取器(魔改) 1.7", "|"))
     print("{0}\t{1:<20}\t{2:^9}".format("|", "原作者Suso", "|"))
     print("{0}\t{1:<20}\t{2:^9}".format("|", "魔改作者FengMing3093", "|"))
     print("{0}\t{1:<20}\t{2:^9}".format("|", "使用Amulet核心", "|"))
@@ -601,11 +607,12 @@ def main():
 
     try:
         with open("config.json", "r", encoding="utf-8") as file_cfg:
-            global cfg_settings, cfg_dupe, cfg_lang
+            global cfg_settings, cfg_lang, cfg_dupe, cfg_default
             config = json.loads(file_cfg.read())
             cfg_settings = config["settings"]
-            cfg_dupe = cfg_settings["keep_duplicate_keys"]
             cfg_lang = cfg_settings["lang"]
+            cfg_dupe = cfg_settings["keep_duplicate_keys"]
+            cfg_default = cfg_settings["default_keys"]
     except Exception as e:
         print("在打开config.json时发生一个错误: /An error occurred while opening the file config.json: ", e)
         exit(1)
@@ -618,8 +625,11 @@ def main():
         print(f"备份中: /Backup: {os.path.abspath('.')}\\backup")
         backup_saves(os.path.abspath('./backup/'), sys.argv[1])
 
-    rev_lang[""] = "empty"
-    rel_lang["empty"] = ""
+    for k in cfg_default:
+        rev_lang[k] = cfg_default[k]
+        rel_lang[cfg_default[k]] = k
+    # rev_lang[""] = "empty"
+    # rel_lang["empty"] = ""
 
     print("\n扫描区块.../Scanning chunks...")
     try:
