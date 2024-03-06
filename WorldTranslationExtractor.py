@@ -19,8 +19,8 @@ cfg_default = dict()
 
 OLD_SPAWNER_FORMAT = False  # If this is false, uses 1.18+ nbt paths for spawners
 
-REG_COMPONENT = re.compile(r'"text" *: *"((?:[^"]|\\\\"|\\.)*)"')
-REG_COMPONENT_PLAIN = re.compile(r'"((?:[^"\\]|\\\\"|\\.)*)"')
+REG_COMPONENT = re.compile(r'"text" *: *"((?:[^"\\]|\\\\|\\.)*)"')
+REG_COMPONENT_PLAIN = re.compile(r'"((?:[^"\\]|\\\\|\\.)*)"')
 REG_COMPONENT_ESCAPED = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\.)*)\\"')
 REG_DATAPACK_CONTENTS = re.compile(r'"contents":"((?:[^"\\]|\\\\"|\\.)*)"')
 REG_BOSSBAR_SET_NAME = re.compile(r'bossbar set ([^ ]+) name "(.*)"')
