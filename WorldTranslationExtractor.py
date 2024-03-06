@@ -58,8 +58,7 @@ def sub_replace(pattern: re.Pattern, string: str, repl, dupe=False, search_all=T
     if search_all:
         loop_count = 0
         last_match = None
-        last_pos = 0
-        match = pattern.search(string, last_pos)
+        match = pattern.search(string)
         # can delete the 2 lines below
         if match is None:
             return string
@@ -70,8 +69,7 @@ def sub_replace(pattern: re.Pattern, string: str, repl, dupe=False, search_all=T
                     raise Exception(f"TOO MANY COMPONENTS HERE: {string}")
             span = match.span()
             ls[span[0]:span[1]] = repl(match, dupe=dupe)
-            last_pos = span[1]
-            match = pattern.search(''.join(ls), last_pos)
+            match = pattern.search(''.join(ls))
             last_match = match
         return ''.join(ls)
     else:
