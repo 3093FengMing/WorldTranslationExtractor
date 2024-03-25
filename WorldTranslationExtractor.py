@@ -19,10 +19,10 @@ cfg_default = dict()
 
 OLD_SPAWNER_FORMAT = False  # If this is false, uses 1.18+ nbt paths for spawners
 
-REG_COMPONENT = re.compile(r'"text" *: *"((?:[^"\\]|\\\\|\\.)*)"')
-REG_COMPONENT_PLAIN = re.compile(r'"((?:[^"\\]|\\\\|\\.)*)"')
-REG_COMPONENT_ESCAPED = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\.)*)\\"')
-REG_DATAPACK_CONTENTS = re.compile(r'"contents":"((?:[^"\\]|\\\\"|\\.)*)"')
+REG_COMPONENT = re.compile(r'"text" *: *"((?:[^"\\]|\\|\.)*)"')
+REG_COMPONENT_PLAIN = re.compile(r'"((?:[^"\\]|\\|\.)*)"')
+REG_COMPONENT_ESCAPED = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\|\.)*)\\"')
+REG_DATAPACK_CONTENTS = re.compile(r'"contents":"((?:[^"\\]|\\\\"|\\|\.)*)"')
 REG_BOSSBAR_SET_NAME = re.compile(r'bossbar set ([^ ]+) name "(.*)"')
 REG_BOSSBAR_ADD = re.compile(r'bossbar add ([^ ]+) "(.*)"')
 CONTAINERS = ["chest", "furnace", "shulker_box", "barrel", "smoker", "blast_furnace", "trapped_chest", "hopper",
@@ -215,7 +215,7 @@ def handle_item(item, dupe=False):
         if "display" not in item['tag']:
             item['tag']['display'] = n.TAG_Compound()
         if "Name" not in item['tag']['display']:
-            # TODO remember to sync it when match_text changed
+            # TODO remember to sync it when `match_text` changed
             # NOT use default keys
             rk = f"item.{id}.{item_counts[id]}.title.1"
             rel_lang[rk] = title
@@ -296,7 +296,7 @@ def handle_command_block(command_block):
     command = str(command_block['Command'])
     txt = sub_replace(REG_COMPONENT, command, match_text, cfg_dupe["command_blocks"])
     txt = sub_replace(REG_COMPONENT_ESCAPED, txt, match_text_escaped, cfg_dupe["command_blocks"])
-    txt = sub_replace(REG_COMPONENT_PLAIN, txt, match_text, cfg_dupe["command_blocks"], False)
+    # txt = sub_replace(REG_COMPONENT_PLAIN, txt, match_text, cfg_dupe["command_blocks"], False)
     txt = sub_replace(REG_DATAPACK_CONTENTS, txt, match_contents, cfg_dupe["command_blocks"])
     txt = sub_replace(REG_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["command_blocks"])
     result_command = sub_replace(REG_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["command_blocks"])
@@ -563,7 +563,7 @@ def scan_file(path, start):
                     continue
                 txt = sub_replace(REG_COMPONENT, line[i], match_text, cfg_dupe["datapacks"])
                 txt = sub_replace(REG_COMPONENT_ESCAPED, txt, match_text_escaped, cfg_dupe["datapacks"])
-                txt = sub_replace(REG_COMPONENT_PLAIN, txt, match_text, cfg_dupe["datapacks"], False)
+                # txt = sub_replace(REG_COMPONENT_PLAIN, txt, match_text, cfg_dupe["datapacks"], False)
                 txt = sub_replace(REG_DATAPACK_CONTENTS, txt, match_contents, cfg_dupe["datapacks"])
                 txt = sub_replace(REG_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["datapacks"])
                 line[i] = sub_replace(REG_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["datapacks"])
