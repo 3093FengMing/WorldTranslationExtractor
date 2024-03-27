@@ -1,4 +1,4 @@
-## 存档翻译提取器魔改版 (WTEM) 1.9
+## 存档翻译提取器魔改版 (WTEM) 2.0
 World Translation Extractor Modified
 
 Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob/main/WorldTranslationExtractor.py)
@@ -17,6 +17,7 @@ Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob
 4. 将输出转为标准的JSON语言文件。
 5. 加入配置文件。
 6. 支持展示实体。
+7. 支持数据宏命令。
 
 ## 原Readme
 

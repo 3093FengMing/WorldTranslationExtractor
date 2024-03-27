@@ -1,4 +1,4 @@
-## World Translation Extractor Modified (WTEM) 1.9
+## World Translation Extractor Modified (WTEM) 2.0
 Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob/main/WorldTranslationExtractor.py)
 
 ### Information
@@ -16,6 +16,7 @@ command blocks, beehive and bee nest.
 4. Convert to standard JSON format to generate language file.
 5. Add config.
 6. Support display entities.
+7. Support marco commands in datapacks.
 
 ## Original Readme
 
