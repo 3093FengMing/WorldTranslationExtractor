@@ -2,7 +2,7 @@
   "settings": {
     "backup": true,
     "components_max": -1,
-    "marco_max": -1,
+    "marcos_max": -1,
     "lang": {
       "indent": 2,
       "ensure_ascii": false,

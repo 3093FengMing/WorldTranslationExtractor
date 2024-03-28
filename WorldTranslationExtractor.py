@@ -100,13 +100,11 @@ def marcos_extract(string: str):
     loop_count = 0
     last_match = None
     match = REG_MARCO_COMMAND.search(string)
-    if match is None:
-        return string
     while match is not None:
         # prevent endless loop
-        if cfg_settings['marco_max'] != -1 and last_match is not None and last_match.string == match.string:
+        if cfg_settings['marcos_max'] != -1 and last_match is not None and last_match.string == match.string:
             loop_count += 1
-            if loop_count >= cfg_settings['marco_max']:
+            if loop_count >= cfg_settings['marcos_max']:
                 LOGGER.error(f"TOO MANY MARCOS HERE: {string}")
         span = match.span()
         marcos.append(''.join(ls[span[0]:span[1]]))
@@ -129,7 +127,7 @@ def match_text(match, escaped=False, dupe=False, is_marco=False):
     plain = get_plain_from_match(match, escaped)
     rk = get_key()
     if is_marco:
-        crk = rk
+        crk = rk + ".marco"
         for m in marcos_extract(plain):
             crk = crk + "." + m
         rk = crk
@@ -183,7 +181,7 @@ def match_bossbar(match, dupe=False, is_marco=False):
     name = match.group(1)
     rk = get_key()
     if is_marco:
-        crk = rk
+        crk = rk + ".marco"
         for m in marcos_extract(plain):
             crk = crk + "." + m
         rk = crk
@@ -205,7 +203,7 @@ def match_bossbar2(match, dupe=False, is_marco=False):
     name = match.group(1)
     rk = get_key()
     if is_marco:
-        crk = rk
+        crk = rk + ".marco"
         for m in marcos_extract(plain):
             crk = crk + "." + m
         rk = crk
@@ -645,8 +643,7 @@ def scan_file(path, start):
                 if lines[i].startswith('$'):  # marco command
                     is_macro = True
                 txt = sub_replace(REG_COMPONENT, lines[i], match_text, cfg_dupe["datapacks"], is_marco=is_macro)
-                txt = sub_replace(REG_COMPONENT_ESCAPED, txt, match_text_escaped, cfg_dupe["datapacks"],
-                                  is_marco=is_macro)
+                txt = sub_replace(REG_COMPONENT_ESCAPED, txt, match_text_escaped, cfg_dupe["datapacks"], is_marco=is_macro)
                 # txt = sub_replace(REG_COMPONENT_PLAIN, txt, match_text, cfg_dupe["datapacks"], False)
                 txt = sub_replace(REG_DATAPACK_CONTENTS, txt, match_contents, cfg_dupe["datapacks"])
                 txt = sub_replace(REG_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["datapacks"], is_marco=is_macro)
