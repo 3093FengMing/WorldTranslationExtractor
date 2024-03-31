@@ -1,12 +1,10 @@
+import json
+import logging
 import os
 import re
 import shutil
 import sys
-
-import json
-import logging
 import time
-from imp import reload
 
 import amulet
 import amulet_nbt as n
@@ -31,16 +29,24 @@ cfg_dupe = dict()
 cfg_default = dict()
 
 # REG
+REG_ANY_TEXT = r'"((?:[^"\\]|\\\\"|\\.)*)"'
 
-OLD_SPAWNER_FORMAT = False  # If this is false, uses 1.18+ nbt paths for spawners
-
-REG_COMPONENT = re.compile(r'"text" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
-REG_COMPONENT_PLAIN = re.compile(r'"((?:[^"\\]|\\\\"|\\.)*)"')
-REG_COMPONENT_ESCAPED = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\.)*)\\"')
+REG_COMPONENT = re.compile(fr'"text" *: *{REG_ANY_TEXT}')
+REG_COMPONENT_PLAIN = re.compile(fr'{REG_ANY_TEXT}')
+REG_COMPONENT_DOUBLE_ESCAPED = re.compile(r'\\\\"text\\\\" *: *\\\\"((?:[^"\\]|\\.)*)\\\\"')
+REG_COMPONENT_ESCAPED = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\.|\\.)*)\\"')
 REG_DATAPACK_CONTENTS = re.compile(r'"contents":"((?:[^"\\]|\\\\"|\\.)*)"')
-REG_BOSSBAR_SET_NAME = re.compile(r'bossbar set ([^ ]+) name "(.*)"')
-REG_BOSSBAR_ADD = re.compile(r'bossbar add ([^ ]+) "(.*)"')
-REG_MARCO_COMMAND = re.compile(r'\$\(.+\)')
+REG_MARCO = re.compile(r'\$\(.+\)')
+
+# Special REG
+SREG_CMD_BOSSBAR_SET_NAME = re.compile(r'bossbar set ([^ ]+) name "(.*)"')
+SREG_CMD_BOSSBAR_ADD = re.compile(r'bossbar add ([^ ]+) "(.*)"')
+
+SREG_ADV_TITLE = re.compile(fr'"title" *: *{REG_ANY_TEXT}')
+SREG_ADV_DESC = re.compile(fr'"description" *: *{REG_ANY_TEXT}')
+
+# Others
+OLD_SPAWNER_FORMAT = False  # If this is false, uses 1.18+ nbt paths for spawners
 CONTAINERS = ["chest", "furnace", "shulker_box", "barrel", "smoker", "blast_furnace", "trapped_chest", "hopper",
               "dispenser", "dropper", "brewing_stand", "campfire", "chiseled_bookshelf"]
 
@@ -69,7 +75,7 @@ def get_key():
 
 
 # match & replace
-def sub_replace(pattern: re.Pattern, string: str, repl, dupe=False, search_all=True, is_marco=False):
+def sub_replace(pattern: re.Pattern, string: str, repl, dupe=False, search_all=True, is_marco=False,):
     if search_all:
         ls = list(string)
         loop_count = 0
@@ -99,7 +105,7 @@ def marcos_extract(string: str):
     ls = list(string)
     loop_count = 0
     last_match = None
-    match = REG_MARCO_COMMAND.search(string)
+    match = REG_MARCO.search(string)
     while match is not None:
         # prevent endless loop
         if cfg_settings['marcos_max'] != -1 and last_match is not None and last_match.string == match.string:
@@ -109,7 +115,7 @@ def marcos_extract(string: str):
         span = match.span()
         marcos.append(''.join(ls[span[0]:span[1]]))
         ls[span[0]:span[1]] = "[extracted]"
-        match = REG_MARCO_COMMAND.search(''.join(ls))
+        match = REG_MARCO.search(''.join(ls))
         last_match = match
     return marcos
 
@@ -123,7 +129,7 @@ def get_plain_from_match(match, escaped=False, ord=1):
     return plain
 
 
-def match_text(match, escaped=False, dupe=False, is_marco=False):
+def match_text(match, escaped=False, dupe=False, is_marco=False, double_escaped=False):
     plain = get_plain_from_match(match, escaped)
     rk = get_key()
     if is_marco:
@@ -135,16 +141,16 @@ def match_text(match, escaped=False, dupe=False, is_marco=False):
         rev_lang[plain] = rk
     if plain in cfg_default:
         LOGGER.info(f'[text default] {cfg_default[plain]}: {plain}')
-        return f'\\"translate\\":\\"{cfg_default[plain]}\\"' if escaped else f'"translate":"{cfg_default[plain]}"'
+        return (f'\\\\"translate\\\\":\\\\"{cfg_default[plain]}\\\\"' if double_escaped else f'\\"translate\\":\\"{cfg_default[plain]}\\"') if escaped else f'"translate":"{cfg_default[plain]}"'
     rel_lang[rk] = plain
     if dupe:
         LOGGER.info(f'[text dupeIf] put key: {rk}: {rel_lang[rk]}')
-        return f'\\"translate\\":\\"{rk}\\"' if escaped else f'"translate":"{rk}"'
+        return (f'\\\\"translate\\\\":\\\\"{rk}\\\\"' if double_escaped else f'\\"translate\\":\\"{rk}\\"') if escaped else f'"translate":"{rk}"'
     LOGGER.info(f'[text dupeElse] put key: {rev_lang[plain]}: {plain}')
-    return f'\\"translate\\":\\"{rev_lang[plain]}\\"' if escaped else f'"translate":"{rev_lang[plain]}"'
+    return (f'\\\\"translate\\\\":\\\\"{rev_lang[plain]}\\\\"' if double_escaped else f'\\"translate\\":\\"{rev_lang[plain]}\\"') if escaped else f'"translate":"{rev_lang[plain]}"'
 
 
-def match_plain_text(match, dupe=False):
+def match_plain_text(match, dupe=False, is_marco=False):
     plain = match.string[1:-1]
     rk = get_key()
     if plain not in rev_lang:
@@ -160,14 +166,14 @@ def match_plain_text(match, dupe=False):
     return f'{{"translate":"{rev_lang[plain]}"}}'
 
 
-def match_contents(match, dupe=False):
+def match_contents(match, dupe=False, is_marco=False):
     plain = get_plain_from_match(match)
     rk = get_key()
     if plain not in rev_lang:
         rev_lang[plain] = rk
     if plain in cfg_default:
         LOGGER.info(f'[contents default] {cfg_default[plain]}: {plain}')
-        return f'"contents":{{{cfg_default[plain]}}}'
+        return f'"contents":{{"translate":"{cfg_default[plain]}"}}'
     rel_lang[rk] = plain
     if dupe:
         LOGGER.info(f'[contents dupeIf] put key: {rk}: {rel_lang[rk]}')
@@ -220,13 +226,50 @@ def match_bossbar2(match, dupe=False, is_marco=False):
     return f'bossbar add {name} {{"translate":"{rev_lang[plain]}"}}'
 
 
+def match_advancement_title(match, dupe=False, is_marco=False):
+    plain = get_plain_from_match(match)
+    rk = get_key()
+    if plain not in rev_lang:
+        rev_lang[plain] = rk
+    if plain in cfg_default:
+        LOGGER.info(f'[adv title default] {cfg_default[plain]}: {plain}')
+        return f'"title":{{"translate":"{cfg_default[plain]}"}}'
+    rel_lang[rk] = plain
+    if dupe:
+        LOGGER.info(f'[adv title dupeIf] put key: {rk}: {rel_lang[rk]}')
+        return f'"title":{{"translate":"{rk}"}}'
+    LOGGER.info(f'[adv title dupeElse] put key: {rev_lang[plain]}: {plain}')
+    return f'"title":{{"translate":"{rev_lang[plain]}"}}'
+
+
+def match_advancement_desc(match, dupe=False, is_marco=False):
+    plain = get_plain_from_match(match)
+    rk = get_key()
+    if plain not in rev_lang:
+        rev_lang[plain] = rk
+    if plain in cfg_default:
+        LOGGER.info(f'[adv desc default] {cfg_default[plain]}: {plain}')
+        return f'"description":{{"translate":"{cfg_default[plain]}"}}'
+    rel_lang[rk] = plain
+    if dupe:
+        LOGGER.info(f'[adv desc dupeIf] put key: {rk}: {rel_lang[rk]}')
+        return f'"description":{{"translate":"{rk}"}}'
+    LOGGER.info(f'[adv desc dupeElse] put key: {rev_lang[plain]}: {plain}')
+    return f'"description":{{"translate":"{rev_lang[plain]}"}}'
+
+
+def match_text_double_escaped(match, dupe=False, is_marco=False):
+    return match_text(match, True, dupe, is_marco, True)
+
+
 def match_text_escaped(match, dupe=False, is_marco=False):
     return match_text(match, True, dupe, is_marco)
 
 
 def replace_component(text, dupe=False):
     text = sub_replace(REG_COMPONENT_PLAIN, str(text), match_plain_text, dupe, False)
-    text = sub_replace(REG_COMPONENT, str(text), match_text, dupe)
+    text = sub_replace(REG_COMPONENT, text, match_text, dupe)
+    text = sub_replace(REG_COMPONENT_DOUBLE_ESCAPED, text, match_text_double_escaped, dupe)
     return n.TAG_String(sub_replace(REG_COMPONENT_ESCAPED, text, match_text_escaped, dupe))
 
 
@@ -354,8 +397,8 @@ def handle_command_block(command_block):
     txt = sub_replace(REG_COMPONENT_ESCAPED, txt, match_text_escaped, cfg_dupe["command_blocks"])
     # txt = sub_replace(REG_COMPONENT_PLAIN, txt, match_text, cfg_dupe["command_blocks"], False)
     txt = sub_replace(REG_DATAPACK_CONTENTS, txt, match_contents, cfg_dupe["command_blocks"])
-    txt = sub_replace(REG_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["command_blocks"])
-    result_command = sub_replace(REG_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["command_blocks"])
+    txt = sub_replace(SREG_CMD_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["command_blocks"])
+    result_command = sub_replace(SREG_CMD_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["command_blocks"])
     command_block['Command'] = n.TAG_String(result_command)
 
     if translation_cnt != len(rel_lang):
@@ -642,12 +685,19 @@ def scan_file(path, start):
                 is_macro = False
                 if lines[i].startswith('$'):  # marco command
                     is_macro = True
-                txt = sub_replace(REG_COMPONENT, lines[i], match_text, cfg_dupe["datapacks"], is_marco=is_macro)
+
+                txt = lines[i]
+                # Advancements
+                txt = sub_replace(SREG_ADV_TITLE, txt, match_advancement_title, cfg_dupe["advancements"])
+                txt = sub_replace(SREG_ADV_DESC, txt, match_advancement_desc, cfg_dupe["advancements"])
+                # Functions
+                txt = sub_replace(REG_COMPONENT, txt, match_text, cfg_dupe["datapacks"], is_marco=is_macro)
+                txt = sub_replace(REG_COMPONENT_DOUBLE_ESCAPED, txt, match_text_double_escaped, cfg_dupe["datapacks"], is_marco=is_macro)
                 txt = sub_replace(REG_COMPONENT_ESCAPED, txt, match_text_escaped, cfg_dupe["datapacks"], is_marco=is_macro)
                 # txt = sub_replace(REG_COMPONENT_PLAIN, txt, match_text, cfg_dupe["datapacks"], False)
                 txt = sub_replace(REG_DATAPACK_CONTENTS, txt, match_contents, cfg_dupe["datapacks"])
-                txt = sub_replace(REG_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["datapacks"], is_marco=is_macro)
-                lines[i] = sub_replace(REG_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["datapacks"], is_marco=is_macro)
+                txt = sub_replace(SREG_CMD_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["datapacks"], is_marco=is_macro)
+                lines[i] = sub_replace(SREG_CMD_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["datapacks"], is_marco=is_macro)
         with open(path, 'w', encoding="utf-8") as f:
             f.writelines(lines)
     except Exception as e:

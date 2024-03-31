@@ -10,6 +10,7 @@
     },
     "keep_duplicate_keys": {
       "datapacks": false,
+      "advancements": false,
       "command_blocks": false,
       "bossbar": false,
       "scores_all": false,

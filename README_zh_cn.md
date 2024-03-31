@@ -1,4 +1,4 @@
-## 存档翻译提取器魔改版 (WTEM) 2.0
+## 存档翻译提取器魔改版 (WTEM) 2.2
 World Translation Extractor Modified
 
 Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob/main/WorldTranslationExtractor.py)
@@ -16,12 +16,12 @@ Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob
 3. 支持 1.19+ 的告示牌、雕纹书架、饰纹陶罐(1.19+)、命令方块、蜂窝以及蜂巢。
 4. 将输出转为标准的JSON语言文件。
 5. 加入配置文件。
-6. 支持展示实体。
-7. 支持数据宏命令。
+6. 支持展示实体的修改。
+7. 支持宏命令的修改。
 
 ## 原Readme
 
-下划线加粗字体说明改内容是新增的。
+下划线加粗字体说明该内容是新增的。
 
 这里是原版的 `README.md`:
 
