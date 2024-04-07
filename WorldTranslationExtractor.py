@@ -31,10 +31,10 @@ cfg_default = dict()
 # REG
 REG_ANY_TEXT = r'"((?:[^"\\]|\\\\"|\\.)*)"'
 
-REG_COMPONENT = re.compile(fr'"text" *: *{REG_ANY_TEXT}')
-REG_COMPONENT_PLAIN = re.compile(fr'{REG_ANY_TEXT}')
-REG_COMPONENT_DOUBLE_ESCAPED = re.compile(r'\\\\"text\\\\" *: *\\\\"((?:[^"\\]|\\.)*)\\\\"')
-REG_COMPONENT_ESCAPED = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\.|\\.)*)\\"')
+REG_COMPONENT = re.compile(r'"text" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
+REG_COMPONENT_PLAIN = re.compile(r'"((?:[^"\\]|\\\\"|\\.)*)"')
+REG_COMPONENT_DOUBLE_ESCAPED = re.compile(r'\\\\"text\\\\" *: *\\\\"((?:[^"\\]|\\\\.)*)\\\\"')
+REG_COMPONENT_ESCAPED = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\.)*)\\"')
 REG_DATAPACK_CONTENTS = re.compile(r'"contents":"((?:[^"\\]|\\\\"|\\.)*)"')
 REG_MARCO = re.compile(r'\$\(.+\)')
 
@@ -42,8 +42,8 @@ REG_MARCO = re.compile(r'\$\(.+\)')
 SREG_CMD_BOSSBAR_SET_NAME = re.compile(r'bossbar set ([^ ]+) name "(.*)"')
 SREG_CMD_BOSSBAR_ADD = re.compile(r'bossbar add ([^ ]+) "(.*)"')
 
-SREG_ADV_TITLE = re.compile(fr'"title" *: *{REG_ANY_TEXT}')
-SREG_ADV_DESC = re.compile(fr'"description" *: *{REG_ANY_TEXT}')
+SREG_ADV_TITLE = re.compile(fr'"title" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
+SREG_ADV_DESC = re.compile(fr'"description" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
 
 # Others
 OLD_SPAWNER_FORMAT = False  # If this is false, uses 1.18+ nbt paths for spawners
@@ -548,7 +548,7 @@ def handle_block_entity_nbt(block_entity):
     changed = handle_block_entity_base(block_entity, id[10:])  # after "minecraft:"
     if changed:
         LOGGER.info(
-            f"[block entity handler] {id[10:]}: ({str(block_entity['x'])},{str(block_entity['y'])},{str(block_entity['z'])})")
+            f"[block entity handler] {id[10:]}: (/tp {str(block_entity['x'])} {str(block_entity['y'])} {str(block_entity['z'])})")
         LOGGER.info('---------')
     return changed
 
@@ -558,7 +558,7 @@ def handle_block_entity(block_entity):
     changed = handle_block_entity_base(nbt, block_entity.base_name)
     if changed:
         LOGGER.info(
-            f"[block entity handler] {block_entity.base_name}: ({block_entity.x},{block_entity.y},{block_entity.z})")
+            f"[block entity handler] {block_entity.base_name}: (/tp {block_entity.x} {block_entity.y} {block_entity.z})")
         LOGGER.info('---------')
     return changed
 
@@ -573,7 +573,7 @@ def handle_entities(level, coords, dimension, entities):
     for e in entities:
         changed |= handle_entity(e.nbt.tag, e.base_name)
         if changed:
-            LOGGER.info(f"[entity handler] {e.base_name}: ({e.x},{e.y},{e.z})")
+            LOGGER.info(f"[entity handler] {e.base_name}: (/tp {e.x} {e.y} {e.z})")
             LOGGER.info('---------')
     if changed:
         level.set_native_entites(coords[0], coords[1], dimension, entities)
@@ -736,7 +736,7 @@ def main():
     init_logger()
 
     print("+===========[Chinese]===========+")
-    print("{0}\t{1:<20}\t{2:^1}".format("|", "存档翻译提取器(魔改) 1.7", "|"))
+    print("{0}\t{1:<20}\t{2:^1}".format("|", "存档翻译提取器(魔改) 2.3", "|"))
     print("{0}\t{1:<20}\t{2:^9}".format("|", "原作者Suso", "|"))
     print("{0}\t{1:<20}\t{2:^9}".format("|", "魔改作者FengMing3093", "|"))
     print("{0}\t{1:<20}\t{2:^9}".format("|", "使用Amulet核心", "|"))
