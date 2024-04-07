@@ -18,6 +18,10 @@ command blocks, beehive and bee nest.
 6. Support display entities.
 7. Support marco commands in datapacks.
 
+### Tip
+
+1. WTEM cannot change the target selector `name=` and the container's `Lock` tag, but it will be recorded for later reference and correction.
+
 ## Original Readme
 
 The underlined and bold text means that this feature is newly added.

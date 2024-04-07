@@ -19,6 +19,10 @@ Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob
 6. 支持展示实体的修改。
 7. 支持宏命令的修改。
 
+### 提示
+
+1. WTEM无法更改目标选择器`name=`，以及容器的`Lock`标签，但是会记录下来，方便后期查找更正。
+
 ## 原Readme
 
 下划线加粗字体说明该内容是新增的。
