@@ -1,4 +1,4 @@
-## 存档翻译提取器魔改版 (WTEM) 2.3
+## 存档翻译提取器魔改版 (WTEM) 2.4
 World Translation Extractor Modified
 
 Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob/main/WorldTranslationExtractor.py)

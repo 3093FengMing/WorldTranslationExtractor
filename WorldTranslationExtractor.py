@@ -42,8 +42,10 @@ REG_MARCO = re.compile(r'\$\(.+\)')
 SREG_CMD_BOSSBAR_SET_NAME = re.compile(r'bossbar set ([^ ]+) name "(.*)"')
 SREG_CMD_BOSSBAR_ADD = re.compile(r'bossbar add ([^ ]+) "(.*)"')
 
-SREG_ADV_TITLE = re.compile(fr'"title" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
-SREG_ADV_DESC = re.compile(fr'"description" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
+SREG_ADV_TITLE = re.compile(r'"title" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
+SREG_ADV_DESC = re.compile(r'"description" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
+
+SREG_RECORD_NAME_TARGET_SELECTOR = re.compile(r'name=')
 
 # Others
 OLD_SPAWNER_FORMAT = False  # If this is false, uses 1.18+ nbt paths for spawners
@@ -351,18 +353,20 @@ def handle_container(container, type):
     block_counts.setdefault(type, 1)
     translation_cnt = len(rel_lang)
 
-    try:
+    if "CustomName" in container:
         set_key(f"block.{type}.{block_counts[type]}.name")
         container['CustomName'] = replace_component(container['CustomName'], cfg_dupe["containers_name"])
         changed = True
-    except KeyError:
-        pass
 
     if translation_cnt != len(rel_lang):
         block_counts[type] += 1
 
-    for item in container['Items']:
-        changed |= handle_item(item, cfg_dupe["items_in_same"])
+    if "Lock" in container:
+        LOGGER.info("[record] Lock: " + str(container['Lock']))
+
+    if "Items" in container:
+        for item in container['Items']:
+            changed |= handle_item(item, cfg_dupe["items_in_same"])
 
     return changed
 
@@ -401,6 +405,10 @@ def handle_command_block(command_block):
     result_command = sub_replace(SREG_CMD_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["command_blocks"])
     command_block['Command'] = n.TAG_String(result_command)
 
+    m = SREG_RECORD_NAME_TARGET_SELECTOR.search(result_command)
+    if m is not None:
+        LOGGER.info("[record] Target Selector Name: " + str(m.start()))
+
     if translation_cnt != len(rel_lang):
         block_counts["command_block"] += 1
 
@@ -411,7 +419,7 @@ def handle_sign(sign):
     block_counts.setdefault("sign", 1)
     translation_cnt = len(rel_lang)
 
-    if 'Text1' in sign.keys():
+    if 'Text1' in sign:
         set_key(f"block.sign.{block_counts['sign']}.text1")
         sign['Text1'] = replace_component(sign['Text1'], cfg_dupe["signs"])
         set_key(f"block.sign.{block_counts['sign']}.text2")
@@ -422,12 +430,12 @@ def handle_sign(sign):
         sign['Text4'] = replace_component(sign['Text4'], cfg_dupe["signs"])
     else:
         # for 1.19+
-        if 'front_text' in sign.keys():
+        if 'front_text' in sign:
             for i in range(len(sign['front_text']['messages'])):
                 set_key(f"block.sign.{block_counts['sign']}.front_text{i + 1}")
                 sign['front_text']['messages'][i] = replace_component(sign['front_text']['messages'][i],
                                                                       cfg_dupe["signs"])
-        if 'back_text' in sign.keys():
+        if 'back_text' in sign:
             for i in range(len(sign['back_text']['messages'])):
                 set_key(f"block.sign.{block_counts['sign']}.back_text{i + 1}")
                 sign['back_text']['messages'][i] = replace_component(sign['back_text']['messages'][i],
@@ -548,8 +556,8 @@ def handle_block_entity_nbt(block_entity):
     changed = handle_block_entity_base(block_entity, id[10:])  # after "minecraft:"
     if changed:
         LOGGER.info(
-            f"[block entity handler] {id[10:]}: (/tp {str(block_entity['x'])} {str(block_entity['y'])} {str(block_entity['z'])})")
-        LOGGER.info('---------')
+            f"[block entity nbt handler] {id[10:]}: (None)")
+        LOGGER.info('---------------------------')
     return changed
 
 
@@ -559,7 +567,7 @@ def handle_block_entity(block_entity):
     if changed:
         LOGGER.info(
             f"[block entity handler] {block_entity.base_name}: (/tp {block_entity.x} {block_entity.y} {block_entity.z})")
-        LOGGER.info('---------')
+        LOGGER.info('---------------------------')
     return changed
 
 
@@ -574,7 +582,7 @@ def handle_entities(level, coords, dimension, entities):
         changed |= handle_entity(e.nbt.tag, e.base_name)
         if changed:
             LOGGER.info(f"[entity handler] {e.base_name}: (/tp {e.x} {e.y} {e.z})")
-            LOGGER.info('---------')
+            LOGGER.info('---------------------------')
     if changed:
         level.set_native_entites(coords[0], coords[1], dimension, entities)
 
@@ -687,9 +695,11 @@ def scan_file(path, start):
                     is_macro = True
 
                 txt = lines[i]
+
                 # Advancements
                 txt = sub_replace(SREG_ADV_TITLE, txt, match_advancement_title, cfg_dupe["advancements"])
                 txt = sub_replace(SREG_ADV_DESC, txt, match_advancement_desc, cfg_dupe["advancements"])
+
                 # Functions
                 txt = sub_replace(REG_COMPONENT, txt, match_text, cfg_dupe["datapacks"], is_marco=is_macro)
                 txt = sub_replace(REG_COMPONENT_DOUBLE_ESCAPED, txt, match_text_double_escaped, cfg_dupe["datapacks"], is_marco=is_macro)
@@ -698,6 +708,11 @@ def scan_file(path, start):
                 txt = sub_replace(REG_DATAPACK_CONTENTS, txt, match_contents, cfg_dupe["datapacks"])
                 txt = sub_replace(SREG_CMD_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["datapacks"], is_marco=is_macro)
                 lines[i] = sub_replace(SREG_CMD_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["datapacks"], is_marco=is_macro)
+
+                m = SREG_RECORD_NAME_TARGET_SELECTOR.search(txt)
+                if m is not None:
+                    LOGGER.info("[record] Target Selector Name: L" + str(i))
+
         with open(path, 'w', encoding="utf-8") as f:
             f.writelines(lines)
     except Exception as e:
@@ -736,7 +751,7 @@ def main():
     init_logger()
 
     print("+===========[Chinese]===========+")
-    print("{0}\t{1:<20}\t{2:^1}".format("|", "存档翻译提取器(魔改) 2.3", "|"))
+    print("{0}\t{1:<20}\t{2:^1}".format("|", "存档翻译提取器(魔改) 2.4", "|"))
     print("{0}\t{1:<20}\t{2:^9}".format("|", "原作者Suso", "|"))
     print("{0}\t{1:<20}\t{2:^9}".format("|", "魔改作者FengMing3093", "|"))
     print("{0}\t{1:<20}\t{2:^9}".format("|", "使用Amulet核心", "|"))
