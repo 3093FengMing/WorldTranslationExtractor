@@ -10,8 +10,88 @@ import amulet
 import amulet_nbt as n
 from tqdm import tqdm
 
-# Logger
 
+class cs_filter:
+    include_namespaces = list()
+    include_paths = list()
+
+    exclude_namespaces = list()
+    exclude_paths = list()
+
+    def add(self, mode, namespace, path):
+        if mode == 'include':
+            self.include_namespaces.append(namespace)
+            self.include_paths.append(path)
+        elif mode == 'exclude':
+            self.exclude_namespaces.append(namespace)
+            self.exclude_paths.append(path)
+        else:
+            raise RuntimeError(f"Filter mode {mode} is not exist!")
+
+    def filter(self, namespace, path):
+        if namespace in self.include_namespaces and path in self.include_paths:
+            return True
+        if namespace in self.exclude_namespaces and path in self.exclude_paths:
+            return False
+        return False
+
+
+class wp_filter:
+    include_worlds = list()
+    include_positions = list()
+
+    exclude_worlds = list()
+    exclude_positions = list()
+
+    class vector3i:
+        def __init__(self, x, y, z):
+            self.x = x
+            self.y = y
+            self.z = z
+
+    def add(self, mode, world, start: list, end: list):
+        start_pos = wp_filter.vector3i(start[0], start[1], start[2])
+        end_pos = wp_filter.vector3i(end[0], end[1], end[2])
+        start_and_end = list()
+        start_and_end.append(start_pos)
+        start_and_end.append(end_pos)
+
+        if mode == 'include':
+            self.include_worlds.append(world)
+            self.include_positions.append(start_and_end)
+        elif mode == 'exclude':
+            self.exclude_worlds.append(world)
+            self.exclude_positions.append(start_and_end)
+        else:
+            raise RuntimeError(f"Filter mode {mode} is not exist!")
+
+    def is_in(self, x: int, y: int, z: int, sae: list):
+        start : wp_filter.vector3i = sae[0]
+        end : wp_filter.vector3i = sae[1]
+        pass
+
+    def filter(self, world, x: int, y: int, z: int):
+        if world in self.include_worlds:
+            bl = False
+            for sae in self.include_positions:
+                if self.is_in(x, y, z, sae):
+                    bl |= True
+                else:
+                    return False
+            return bl
+
+        if world in self.exclude_worlds:
+            bl = False
+            for sae in self.exclude_positions:
+                if self.is_in(x, y, z, sae):
+                    return False
+                else:
+                    bl |= True
+            return bl
+
+        return False
+
+# Logger
 FORMATTER = logging.Formatter("%(asctime)s - %(name)s - %(funcName)s[line:%(lineno)d] - %(levelname)s: %(message)s")
 
 file_handler = logging.FileHandler(f'{time.strftime("%Y_%m_%d %H-%M-%S")}.log')
@@ -26,7 +106,14 @@ LOGGER = logging.getLogger("WTEM")
 cfg_settings = dict()
 cfg_lang = dict()
 cfg_dupe = dict()
+cfg_filters = dict()
 cfg_default = dict()
+
+DISABLE_COMPONENTS_LIMIT = False
+DISABLE_MARCOS_LIMIT = False
+
+CS_FILTER = cs_filter()
+WP_FILTER = wp_filter()
 
 # REG
 REG_ANY_TEXT = r'"((?:[^"\\]|\\\\"|\\.)*)"'
@@ -36,9 +123,10 @@ REG_COMPONENT_PLAIN = re.compile(r'"((?:[^"\\]|\\\\"|\\.)*)"')
 REG_COMPONENT_DOUBLE_ESCAPED = re.compile(r'\\\\"text\\\\" *: *\\\\"((?:[^"\\]|\\\\.)*)\\\\"')
 REG_COMPONENT_ESCAPED = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\.)*)\\"')
 REG_DATAPACK_CONTENTS = re.compile(r'"contents":"((?:[^"\\]|\\\\"|\\.)*)"')
-REG_MARCO = re.compile(r'\$\(.+\)')
 
 # Special REG
+SREG_MARCO = re.compile(r'\$\(.+\)')
+
 SREG_CMD_BOSSBAR_SET_NAME = re.compile(r'bossbar set ([^ ]+) name "(.*)"')
 SREG_CMD_BOSSBAR_ADD = re.compile(r'bossbar add ([^ ]+) "(.*)"')
 
@@ -54,6 +142,7 @@ CONTAINERS = ["chest", "furnace", "shulker_box", "barrel", "smoker", "blast_furn
 
 rev_lang = dict()  # Keep duplicates (reversed)
 rel_lang = dict()  # Normal language file format
+mix_lang = dict()
 
 item_counts = dict()
 block_counts = dict()
@@ -77,7 +166,7 @@ def get_key():
 
 
 # match & replace
-def sub_replace(pattern: re.Pattern, string: str, repl, dupe=False, search_all=True, is_marco=False,):
+def sub_replace(pattern: re.Pattern, string: str, repl, dupe=False, search_all=True, is_marco=False, ):
     if search_all:
         ls = list(string)
         loop_count = 0
@@ -88,7 +177,7 @@ def sub_replace(pattern: re.Pattern, string: str, repl, dupe=False, search_all=T
             return string
         while match is not None:
             # prevent endless loop
-            if cfg_settings['components_max'] != -1 and last_match is not None and last_match.string == match.string:
+            if not DISABLE_COMPONENTS_LIMIT and last_match is not None and last_match.string == match.string:
                 loop_count += 1
                 if loop_count >= cfg_settings['components_max']:
                     LOGGER.error(f"TOO MANY COMPONENTS HERE: {string}")
@@ -107,17 +196,17 @@ def marcos_extract(string: str):
     ls = list(string)
     loop_count = 0
     last_match = None
-    match = REG_MARCO.search(string)
+    match = SREG_MARCO.search(string)
     while match is not None:
         # prevent endless loop
-        if cfg_settings['marcos_max'] != -1 and last_match is not None and last_match.string == match.string:
+        if not DISABLE_MARCOS_LIMIT != -1 and last_match is not None and last_match.string == match.string:
             loop_count += 1
             if loop_count >= cfg_settings['marcos_max']:
                 LOGGER.error(f"TOO MANY MARCOS HERE: {string}")
         span = match.span()
         marcos.append(''.join(ls[span[0]:span[1]]))
         ls[span[0]:span[1]] = "[extracted]"
-        match = REG_MARCO.search(''.join(ls))
+        match = SREG_MARCO.search(''.join(ls))
         last_match = match
     return marcos
 
@@ -143,13 +232,16 @@ def match_text(match, escaped=False, dupe=False, is_marco=False, double_escaped=
         rev_lang[plain] = rk
     if plain in cfg_default:
         LOGGER.info(f'[text default] {cfg_default[plain]}: {plain}')
-        return (f'\\\\"translate\\\\":\\\\"{cfg_default[plain]}\\\\"' if double_escaped else f'\\"translate\\":\\"{cfg_default[plain]}\\"') if escaped else f'"translate":"{cfg_default[plain]}"'
+        return (
+            f'\\\\"translate\\\\":\\\\"{cfg_default[plain]}\\\\"' if double_escaped else f'\\"translate\\":\\"{cfg_default[plain]}\\"') if escaped else f'"translate":"{cfg_default[plain]}"'
     rel_lang[rk] = plain
     if dupe:
         LOGGER.info(f'[text dupeIf] put key: {rk}: {rel_lang[rk]}')
-        return (f'\\\\"translate\\\\":\\\\"{rk}\\\\"' if double_escaped else f'\\"translate\\":\\"{rk}\\"') if escaped else f'"translate":"{rk}"'
+        return (
+            f'\\\\"translate\\\\":\\\\"{rk}\\\\"' if double_escaped else f'\\"translate\\":\\"{rk}\\"') if escaped else f'"translate":"{rk}"'
     LOGGER.info(f'[text dupeElse] put key: {rev_lang[plain]}: {plain}')
-    return (f'\\\\"translate\\\\":\\\\"{rev_lang[plain]}\\\\"' if double_escaped else f'\\"translate\\":\\"{rev_lang[plain]}\\"') if escaped else f'"translate":"{rev_lang[plain]}"'
+    return (
+        f'\\\\"translate\\\\":\\\\"{rev_lang[plain]}\\\\"' if double_escaped else f'\\"translate\\":\\"{rev_lang[plain]}\\"') if escaped else f'"translate":"{rev_lang[plain]}"'
 
 
 def match_plain_text(match, dupe=False, is_marco=False):
@@ -278,40 +370,31 @@ def replace_component(text, dupe=False):
 # handler
 def handle_item(item, dupe=False):
     changed = False
-    if len(item) == 0:
+    if len(item) == 0 or 'tag' not in item:
         return False
     id = str(item['id'])[10:]
     item_counts.setdefault(id, 1)
     translation_cnt = len(rel_lang)
 
-    try:
-        set_key(f"item.{id}.{item_counts[id]}.name")
-        item['tag']['display']['Name'] = replace_component(item['tag']['display']['Name'],
-                                                           dupe | cfg_dupe["items_name"] | cfg_dupe["items_all"])
-        changed = True
-    except KeyError:
-        pass
+    if 'display' in item['tag']:
+        if 'Name' in item['tag']['display']:
+            set_key(f"item.{id}.{item_counts[id]}.name")
+            item['tag']['display']['Name'] = replace_component(item['tag']['display']['Name'], dupe | cfg_dupe["items_name"] | cfg_dupe["items_all"])
+            changed = True
 
-    try:
-        for line in range(len(item['tag']['display']['Lore'])):
-            set_key(f"item.{id}.{item_counts[id]}.lore.{line}")
-            item['tag']['display']['Lore'][line] = replace_component(item['tag']['display']['Lore'][line],
-                                                                     dupe | cfg_dupe["items_lore"] | cfg_dupe[
-                                                                         "items_all"])
-        changed = True
-    except KeyError:
-        pass
+        if 'Lore' in item['tag']['display']:
+            for line in range(len(item['tag']['display']['Lore'])):
+                set_key(f"item.{id}.{item_counts[id]}.lore.{line}")
+                item['tag']['display']['Lore'][line] = replace_component(item['tag']['display']['Lore'][line], dupe | cfg_dupe["items_lore"] | cfg_dupe["items_all"])
+            changed = True
 
-    try:
+    if 'pages' in item['tag']:
         for page in range(len(item['tag']['pages'])):
             set_key(f"item.{id}.{item_counts[id]}.page.{page}")
-            item['tag']['pages'][page] = replace_component(item['tag']['pages'][page],
-                                                           dupe | cfg_dupe["items_pages"] | cfg_dupe["items_all"])
+            item['tag']['pages'][page] = replace_component(item['tag']['pages'][page], dupe | cfg_dupe["items_pages"] | cfg_dupe["items_all"])
         changed = True
-    except KeyError:
-        pass
 
-    try:
+    if 'title' in item['tag']:
         title = str(item['tag']['title'])
         if "display" not in item['tag']:
             item['tag']['display'] = n.TAG_Compound()
@@ -329,21 +412,15 @@ def handle_item(item, dupe=False):
                 LOGGER.info(f'[json book title dupeElse] put key: {rev_lang[title]}: {title}')
                 item['tag']['display']['Name'] = n.TAG_String(f'{{"translate":"{rev_lang[title]}","italic":false}}')
             changed = True
-    except KeyError:
-        pass
 
     if translation_cnt != len(rel_lang):
         item_counts[id] += 1
 
-    try:
-        changed |= handle_block_entity_nbt(item['tag']['BlockEntityTag'])
-    except KeyError:
-        pass
+    if 'BlockEntityTag' in item['tag']:
+        changed |= handle_block_entity_nbt(item['tag']['BlockEntityTag'], item['id'])
 
-    try:
+    if 'EntityTag' in item['tag']:
         changed |= handle_entity(item['tag']['EntityTag'], None)
-    except KeyError:
-        pass
 
     return changed
 
@@ -415,11 +492,12 @@ def handle_command_block(command_block):
     return True
 
 
-def handle_sign(sign):
-    block_counts.setdefault("sign", 1)
+def handle_sign(sign, hanging):
+    name = "hanging_sign" if hanging else "sign"
+    block_counts.setdefault(name, 1)
     translation_cnt = len(rel_lang)
 
-    if 'Text1' in sign:
+    if not hanging and 'Text1' in sign:
         set_key(f"block.sign.{block_counts['sign']}.text1")
         sign['Text1'] = replace_component(sign['Text1'], cfg_dupe["signs"])
         set_key(f"block.sign.{block_counts['sign']}.text2")
@@ -432,17 +510,15 @@ def handle_sign(sign):
         # for 1.19+
         if 'front_text' in sign:
             for i in range(len(sign['front_text']['messages'])):
-                set_key(f"block.sign.{block_counts['sign']}.front_text{i + 1}")
-                sign['front_text']['messages'][i] = replace_component(sign['front_text']['messages'][i],
-                                                                      cfg_dupe["signs"])
+                set_key(f"block.{name}.{block_counts[name]}.front_text{i + 1}")
+                sign['front_text']['messages'][i] = replace_component(sign['front_text']['messages'][i], cfg_dupe["signs"])
         if 'back_text' in sign:
             for i in range(len(sign['back_text']['messages'])):
-                set_key(f"block.sign.{block_counts['sign']}.back_text{i + 1}")
-                sign['back_text']['messages'][i] = replace_component(sign['back_text']['messages'][i],
-                                                                     cfg_dupe["signs"])
+                set_key(f"block.{name}.{block_counts[name]}.back_text{i + 1}")
+                sign['back_text']['messages'][i] = replace_component(sign['back_text']['messages'][i], cfg_dupe["signs"])
 
     if translation_cnt != len(rel_lang):
-        block_counts["sign"] += 1
+        block_counts[name] += 1
 
     return True
 
@@ -465,11 +541,9 @@ def handle_spawner(spawner):
 
 def handle_beehive(beehive):
     changed = False
-    try:
+    if 'Bees' in beehive:
         for bee in beehive['Bees']:
             changed |= handle_entity(bee['EntityData'], None)
-    except KeyError:
-        pass
     return changed
 
 
@@ -537,7 +611,9 @@ def handle_block_entity_base(block_entity, name):
     elif name in CONTAINERS:
         return handle_container(block_entity, name)
     elif name == "sign":
-        return handle_sign(block_entity)
+        return handle_sign(block_entity, False)
+    elif name == "hanging_sign":
+        return handle_sign(block_entity, True)
     elif name == "lectern":
         return handle_item_entity_block(block_entity, "Book")
     elif name == "jukebox":
@@ -551,8 +627,7 @@ def handle_block_entity_base(block_entity, name):
     return False
 
 
-def handle_block_entity_nbt(block_entity):
-    id = str(block_entity['id'])
+def handle_block_entity_nbt(block_entity, id):
     changed = handle_block_entity_base(block_entity, id[10:])  # after "minecraft:"
     if changed:
         LOGGER.info(
@@ -589,6 +664,7 @@ def handle_entities(level, coords, dimension, entities):
 
 # scanner
 def scan_world(level):
+    threshold = cfg_settings["save_threshold"]
     for dimension in level.dimensions:
         chunk_coords = sorted(level.all_chunk_coords(dimension))
         if len(chunk_coords) < 1:
@@ -606,7 +682,7 @@ def scan_world(level):
                     handle_chunk(chunk)
                     handle_entities(level, coords, dimension, entities)
                     count += 1
-                    if count < 5000:
+                    if count < threshold:
                         continue
                     count = 0
                     LOGGER.info("\n保存中......")
@@ -614,8 +690,7 @@ def scan_world(level):
                     level.unload()
             level.save()
         except KeyboardInterrupt:
-            LOGGER.error(
-                "中断！最后5000区块切片数据将不会保存！/Interrupted. Changes to last 5000 chunk slice won't be saved.")
+            LOGGER.error("中断！最后5000区块切片数据将不会保存！/Interrupted. Changes to last 5000 chunk slice won't be saved.")
             level.close()
             exit(0)
         level.unload()
@@ -630,14 +705,11 @@ def scan_scores(path):
             s['DisplayName'] = replace_component(s['DisplayName'], cfg_dupe["scores_name"] | cfg_dupe["scores_all"])
         for t in scores.tag['data']['Teams']:
             set_key(f"score.{t['Name']}.name")
-            t['DisplayName'] = replace_component(t['DisplayName'],
-                                                 cfg_dupe["scores_teams_name"] | cfg_dupe["scores_all"])
+            t['DisplayName'] = replace_component(t['DisplayName'], cfg_dupe["scores_teams_name"] | cfg_dupe["scores_all"])
             set_key(f"score.{t['Name']}.prefix")
-            t['MemberNamePrefix'] = replace_component(t['MemberNamePrefix'],
-                                                      cfg_dupe["scores_teams_prefix"] | cfg_dupe["scores_all"])
+            t['MemberNamePrefix'] = replace_component(t['MemberNamePrefix'], cfg_dupe["scores_teams_prefix"] | cfg_dupe["scores_all"])
             set_key(f"score.{t['Name']}.suffix")
-            t['MemberNameSuffix'] = replace_component(t['MemberNameSuffix'],
-                                                      cfg_dupe["scores_teams_suffix"] | cfg_dupe["scores_all"])
+            t['MemberNameSuffix'] = replace_component(t['MemberNameSuffix'], cfg_dupe["scores_teams_suffix"] | cfg_dupe["scores_all"])
         scores.save_to(path)
     except Exception as e:
         LOGGER.error("无法访问计分板数据：/No scoreboard data could be accessed: ", e)
@@ -659,18 +731,31 @@ def scan_structure(path):
     try:
         structure = n.load(path)
         for b in structure.tag['blocks']:
-            try:
-                handle_block_entity_nbt(b['nbt'])
-            except KeyError:
-                pass
+            handle_block_entity_nbt(b['nbt'], b['nbt']['id'])
         for e in structure.tag['entities']:
-            try:
-                handle_entity(e['nbt'], None)
-            except KeyError:
-                pass
+            handle_entity(e['nbt'], None)
         structure.save_to(path)
     except Exception as e:
-        LOGGER.error("无法打开结构文件/Couldn't open structure file '" + path + "':", e)
+        LOGGER.error("无法访问结构文件/No structure file could be accessed: ", e)
+
+
+def scan_command_storages(path):
+    for root, _, files in os.walk(path):
+        for f in files:
+            if f.startswith("command_storage"):
+                scan_command_storage(os.path.join(root, f), f[16:-4])  # "(command_storage_)minecraft(.dat)"
+
+
+def scan_command_storage(path, namespace):
+    try:
+        data = n.load(path)
+        for c in data.tag['data']['contents']:
+            nbt_path = ""
+            if CS_FILTER.filter(namespace, nbt_path):
+                pass
+        data.save_to(path)
+    except Exception as e:
+        LOGGER.error("无法访问命令存储/No command storage could be accessed: ", e)
 
 
 def scan_file(path, start):
@@ -704,7 +789,6 @@ def scan_file(path, start):
                 txt = sub_replace(REG_COMPONENT, txt, match_text, cfg_dupe["datapacks"], is_marco=is_macro)
                 txt = sub_replace(REG_COMPONENT_DOUBLE_ESCAPED, txt, match_text_double_escaped, cfg_dupe["datapacks"], is_marco=is_macro)
                 txt = sub_replace(REG_COMPONENT_ESCAPED, txt, match_text_escaped, cfg_dupe["datapacks"], is_marco=is_macro)
-                # txt = sub_replace(REG_COMPONENT_PLAIN, txt, match_text, cfg_dupe["datapacks"], False)
                 txt = sub_replace(REG_DATAPACK_CONTENTS, txt, match_contents, cfg_dupe["datapacks"])
                 txt = sub_replace(SREG_CMD_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["datapacks"], is_marco=is_macro)
                 lines[i] = sub_replace(SREG_CMD_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["datapacks"], is_marco=is_macro)
@@ -716,7 +800,7 @@ def scan_file(path, start):
         with open(path, 'w', encoding="utf-8") as f:
             f.writelines(lines)
     except Exception as e:
-        LOGGER.error("无法替换数据包文件/Couldn't replace datapack file '" + path + "':", e)
+        LOGGER.error("无法替换数据包文件/Could not replace datapack file '" + path + "':", e)
 
 
 def scan_datapacks(path):
@@ -726,10 +810,25 @@ def scan_datapacks(path):
 
 
 # main
+def clearup_keys():
+    global mix_lang
+    mixed = dict()
+    for k in rev_lang:
+        mixed[rev_lang[k]] = k
+    for k in rel_lang:
+        v = rel_lang[k]
+        if v not in rev_lang:
+            mixed[k] = v
+    mix_lang = mixed
+
+
 def gen_lang(path):
-    obj = json.dumps(rel_lang, indent=cfg_lang["indent"], ensure_ascii=cfg_lang["ensure_ascii"],
-                     sort_keys=cfg_lang["sort_keys"])
-    with open(path, 'w', encoding="utf-8") as f:
+    obj = json.dumps(rel_lang, indent=cfg_lang["indent"], ensure_ascii=cfg_lang["ensure_ascii"], sort_keys=cfg_lang["sort_keys"])
+    with open(path + "_original.json", 'w', encoding="utf-8") as f:
+        f.write(obj)
+
+    obj = json.dumps(mix_lang, indent=cfg_lang["indent"], ensure_ascii=cfg_lang["ensure_ascii"], sort_keys=cfg_lang["sort_keys"])
+    with open(path + "_cleared.json", 'w', encoding="utf-8") as f:
         f.write(obj)
 
 
@@ -751,7 +850,7 @@ def main():
     init_logger()
 
     print("+===========[Chinese]===========+")
-    print("{0}\t{1:<20}\t{2:^1}".format("|", "存档翻译提取器(魔改) 2.4", "|"))
+    print("{0}\t{1:<20}\t{2:^1}".format("|", "存档翻译提取器(修改) 2.5", "|"))
     print("{0}\t{1:<20}\t{2:^9}".format("|", "原作者Suso", "|"))
     print("{0}\t{1:<20}\t{2:^9}".format("|", "魔改作者FengMing3093", "|"))
     print("{0}\t{1:<20}\t{2:^9}".format("|", "使用Amulet核心", "|"))
@@ -759,14 +858,24 @@ def main():
 
     try:
         with open("config.json", "r", encoding="utf-8") as file_cfg:
-            global cfg_settings, cfg_lang, cfg_dupe, cfg_default
-            config = json.loads(file_cfg.read())
-            cfg_settings = config["settings"]
-            cfg_lang = cfg_settings["lang"]
-            cfg_dupe = cfg_settings["keep_duplicate_keys"]
-            cfg_default = cfg_settings["default_keys"]
+            global cfg_settings, cfg_lang, cfg_dupe, cfg_default, cfg_filters, DISABLE_COMPONENTS_LIMIT, DISABLE_MARCOS_LIMIT
+            config : dict = json.loads(file_cfg.read())
+            cfg_settings : dict = config["settings"]
+            cfg_lang : dict = cfg_settings["lang"]
+            cfg_dupe : dict = cfg_settings["keep_duplicate_keys"]
+            cfg_default : dict = cfg_settings["default_keys"]
+            cfg_filters : dict = cfg_settings["filters"]
+
+            DISABLE_COMPONENTS_LIMIT = cfg_settings['components_max'] == -1
+            DISABLE_MARCOS_LIMIT = cfg_settings['marcos_max'] == -1
+
+            for f in cfg_filters['command_storages']:
+                CS_FILTER.add(f['mode'], f['namespace'], f['path'])
+            for f in cfg_filters['world_positions']:
+                WP_FILTER.add(f['mode'], f['world'], f['start'], f['end'])
+
     except Exception as e:
-        LOGGER.error("在打开config.json时发生一个错误: /An error occurred while opening the file config.json: ", e)
+        LOGGER.error("打开config.json时出错: /Error opening config.json: ", e)
         exit(1)
 
     if len(sys.argv) < 2:
@@ -774,14 +883,12 @@ def main():
         exit(0)
 
     if cfg_settings["backup"]:
-        LOGGER.info(f"备份中: /Backup: {os.path.abspath('.')}\\backup")
-        backup_saves(os.path.abspath('./backup/'), sys.argv[1])
+        LOGGER.info(f"备份中: /Backup: {os.path.abspath('.')}{os.sep}backup_{sys.argv[1]}")
+        backup_saves(os.path.abspath(f"./backup_{sys.argv[1]}"), sys.argv[1])
 
     for k in cfg_default:
         rev_lang[k] = cfg_default[k]
         rel_lang[cfg_default[k]] = k
-    # rev_lang[""] = "empty"
-    # rel_lang["empty"] = ""
 
     LOGGER.info("\n扫描区块.../Scanning chunks...")
     try:
@@ -796,6 +903,7 @@ def main():
         exit(1)
 
     LOGGER.info("\n扫描杂项NBT/Scanning misc NBT...")
+    # scan_command_storages(sys.argv[1] + "/data")
     scan_scores(sys.argv[1] + "/data/scoreboard.dat")
     scan_level(sys.argv[1] + "/level.dat")
 
@@ -803,13 +911,14 @@ def main():
     scan_datapacks(sys.argv[1] + "/datapacks")
     scan_datapacks(sys.argv[1] + "/generated")
 
+    LOGGER.info("\n剔除冗余键/Remove redundant keys...")
+    clearup_keys()
+
     LOGGER.info("\n生成语言文件/Generating default lang file...")
-    gen_lang('default_lang.json')
+    gen_lang(cfg_lang["file_name"])
 
     LOGGER.info("完工！/Done!")
 
 
 if __name__ == '__main__':
-    # reload(sys)
-    # sys.setdefaultencoding('utf8')
     main()

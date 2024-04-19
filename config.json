@@ -1,13 +1,15 @@
 {
   "settings": {
     "backup": true,
-    "components_max": -1,
-    "marcos_max": -1,
     "lang": {
+      "file_name": "en_us",
       "indent": 2,
       "ensure_ascii": false,
       "sort_keys": false
     },
+    "components_max": -1,
+    "marcos_max": -1,
+    "save_threshold": 5000,
     "keep_duplicate_keys": {
       "datapacks": false,
       "advancements": false,
@@ -25,9 +27,26 @@
       "items_in_same": false,
       "items_all": false,
       "items_name": false,
-      "items_lore": true,
+      "items_lore": false,
       "items_pages": false,
       "items_title": false
+    },
+    "filters": {
+      "command_storages": [
+        {
+          "mode": "include",
+          "namespace": "minecraft",
+          "path": "a.b.c"
+        }
+      ],
+      "world_positions": [
+        {
+          "mode": "exclude",
+          "world": "",
+          "start": [0, 0, 0],
+          "end": [100, 100, 100]
+        }
+      ]
     },
     "default_keys": {
       "": "wtem.empty",
