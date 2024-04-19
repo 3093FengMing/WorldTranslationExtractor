@@ -66,8 +66,8 @@ class wp_filter:
             raise RuntimeError(f"Filter mode {mode} is not exist!")
 
     def is_in(self, x: int, y: int, z: int, sae: list):
-        start : wp_filter.vector3i = sae[0]
-        end : wp_filter.vector3i = sae[1]
+        start: wp_filter.vector3i = sae[0]
+        end: wp_filter.vector3i = sae[1]
         pass
 
     def filter(self, world, x: int, y: int, z: int):
@@ -90,6 +90,7 @@ class wp_filter:
             return bl
 
         return False
+
 
 # Logger
 FORMATTER = logging.Formatter("%(asctime)s - %(name)s - %(funcName)s[line:%(lineno)d] - %(levelname)s: %(message)s")
@@ -630,8 +631,7 @@ def handle_block_entity_base(block_entity, name):
 def handle_block_entity_nbt(block_entity, id):
     changed = handle_block_entity_base(block_entity, id[10:])  # after "minecraft:"
     if changed:
-        LOGGER.info(
-            f"[block entity nbt handler] {id[10:]}: (None)")
+        LOGGER.info(f"[block entity nbt handler] {id[10:]}: (Structure/ItemLike)")
         LOGGER.info('---------------------------')
     return changed
 
@@ -640,8 +640,7 @@ def handle_block_entity(block_entity):
     nbt = block_entity.nbt.tag['utags']
     changed = handle_block_entity_base(nbt, block_entity.base_name)
     if changed:
-        LOGGER.info(
-            f"[block entity handler] {block_entity.base_name}: (/tp {block_entity.x} {block_entity.y} {block_entity.z})")
+        LOGGER.info(f"[block entity handler] {block_entity.base_name}: (/tp {block_entity.x} {block_entity.y} {block_entity.z})")
         LOGGER.info('---------------------------')
     return changed
 
@@ -690,7 +689,7 @@ def scan_world(level):
                     level.unload()
             level.save()
         except KeyboardInterrupt:
-            LOGGER.error("中断！最后5000区块切片数据将不会保存！/Interrupted. Changes to last 5000 chunk slice won't be saved.")
+            LOGGER.error(f"中断！最后{threshold}个区块切片数据将不会保存！/Interrupted. Changes to last {threshold} chunks slice won't be saved.")
             level.close()
             exit(0)
         level.unload()
@@ -817,7 +816,7 @@ def clearup_keys():
         mixed[rev_lang[k]] = k
     for k in rel_lang:
         v = rel_lang[k]
-        if v not in rev_lang:
+        if v not in mixed:
             mixed[k] = v
     mix_lang = mixed
 
@@ -849,30 +848,23 @@ def init_logger():
 def main():
     init_logger()
 
-    print("+===========[Chinese]===========+")
-    print("{0}\t{1:<20}\t{2:^1}".format("|", "存档翻译提取器(修改) 2.5", "|"))
-    print("{0}\t{1:<20}\t{2:^9}".format("|", "原作者Suso", "|"))
-    print("{0}\t{1:<20}\t{2:^9}".format("|", "魔改作者FengMing3093", "|"))
-    print("{0}\t{1:<20}\t{2:^9}".format("|", "使用Amulet核心", "|"))
-    print("+===============================+")
-
     try:
         with open("config.json", "r", encoding="utf-8") as file_cfg:
             global cfg_settings, cfg_lang, cfg_dupe, cfg_default, cfg_filters, DISABLE_COMPONENTS_LIMIT, DISABLE_MARCOS_LIMIT
-            config : dict = json.loads(file_cfg.read())
-            cfg_settings : dict = config["settings"]
-            cfg_lang : dict = cfg_settings["lang"]
-            cfg_dupe : dict = cfg_settings["keep_duplicate_keys"]
-            cfg_default : dict = cfg_settings["default_keys"]
-            cfg_filters : dict = cfg_settings["filters"]
+            config = json.loads(file_cfg.read())
+            cfg_settings = config["settings"]
+            cfg_lang = cfg_settings["lang"]
+            cfg_dupe = cfg_settings["keep_duplicate_keys"]
+            cfg_default = cfg_settings["default_keys"]
+            # cfg_filters: dict = cfg_settings["filters"]
 
             DISABLE_COMPONENTS_LIMIT = cfg_settings['components_max'] == -1
             DISABLE_MARCOS_LIMIT = cfg_settings['marcos_max'] == -1
 
-            for f in cfg_filters['command_storages']:
-                CS_FILTER.add(f['mode'], f['namespace'], f['path'])
-            for f in cfg_filters['world_positions']:
-                WP_FILTER.add(f['mode'], f['world'], f['start'], f['end'])
+            # for f in cfg_filters['command_storages']:
+            #     CS_FILTER.add(f['mode'], f['namespace'], f['path'])
+            # for f in cfg_filters['world_positions']:
+            #     WP_FILTER.add(f['mode'], f['world'], f['start'], f['end'])
 
     except Exception as e:
         LOGGER.error("打开config.json时出错: /Error opening config.json: ", e)
@@ -921,4 +913,15 @@ def main():
 
 
 if __name__ == '__main__':
+    print(r''' __      __  ______  ____                
+/\ \  __/\ \/\__  _\/\  _`\   /'\_/`\    
+\ \ \/\ \ \ \/_/\ \/\ \ \L\_\/\      \   
+ \ \ \ \ \ \ \ \ \ \ \ \  _\L\ \ \__\ \  
+  \ \ \_/ \_\ \ \ \ \ \ \ \L\ \ \ \_/\ \ 
+   \ `\___x___/  \ \_\ \ \____/\ \_\\ \_\
+    '\/__//__/    \/_/  \/___/  \/_/ \/_/
+----WTEM v2.5 By 3093FengMing
+----Core: Amulet
+----Credits: Suso''')
+    os.system("pause")
     main()
