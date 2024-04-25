@@ -11,6 +11,7 @@
     "marcos_max": -1,
     "save_threshold": 5000,
     "keep_duplicate_keys": {
+      "command_storage": false,
       "datapacks": false,
       "advancements": false,
       "command_blocks": false,

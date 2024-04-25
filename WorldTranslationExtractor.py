@@ -49,7 +49,12 @@ class wp_filter:
             self.y = y
             self.z = z
 
-    def add(self, mode, world, start: list, end: list):
+    def add(self, mode, world, _start: list, _end: list):
+        start = list()
+        end = list()
+        for i in range(0, 3):
+            start[i] = min(_start[i], _end[i])
+            end[i] = max(_start[i], _end[i])
         start_pos = wp_filter.vector3i(start[0], start[1], start[2])
         end_pos = wp_filter.vector3i(end[0], end[1], end[2])
         start_and_end = list()
@@ -68,7 +73,8 @@ class wp_filter:
     def is_in(self, x: int, y: int, z: int, sae: list):
         start: wp_filter.vector3i = sae[0]
         end: wp_filter.vector3i = sae[1]
-        pass
+        if start.x <= x <= end.x and start.y <= y <= end.y and start.z <= z <= end.z:
+            return True
 
     def filter(self, world, x: int, y: int, z: int):
         if world in self.include_worlds:
@@ -90,6 +96,29 @@ class wp_filter:
             return bl
 
         return False
+
+
+class meta_dict(dict):
+    class metadata:
+        def __init__(self, key, value, dupe: bool, rev_or_rel: str):
+            self.key = key
+            self.value = value
+            self.dupe = dupe
+            self.rev_ore_rel = rev_or_rel
+
+    def __init__(self, type):
+        super().__init__()
+        self.inner_dict = dict()
+        self.type = type
+
+    def put(self, key, value, dupe):
+        self.inner_dict.__setitem__(key, meta_dict.metadata(key, value, dupe, self.type))
+
+    def get(self, key):
+        return self.inner_dict.__getitem__(key)
+
+    def __getitem__(self, item):
+        return self.inner_dict.__getitem__(item).value
 
 
 # Logger
@@ -117,13 +146,13 @@ CS_FILTER = cs_filter()
 WP_FILTER = wp_filter()
 
 # REG
-REG_ANY_TEXT = r'"((?:[^"\\]|\\\\"|\\.)*)"'
+REG_ANY_TEXT = r'"((?:[^"\\]|\\\\|\\.)*)"'
 
-REG_COMPONENT = re.compile(r'"text" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
-REG_COMPONENT_PLAIN = re.compile(r'"((?:[^"\\]|\\\\"|\\.)*)"')
+REG_COMPONENT = re.compile(r'"text" *: *"((?:[^"\\]|\\\\|\\.)*)"')
+REG_COMPONENT_PLAIN = re.compile(r'"((?:[^"\\]|\\\\|\\.)*)"')
 REG_COMPONENT_DOUBLE_ESCAPED = re.compile(r'\\\\"text\\\\" *: *\\\\"((?:[^"\\]|\\\\.)*)\\\\"')
 REG_COMPONENT_ESCAPED = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\.)*)\\"')
-REG_DATAPACK_CONTENTS = re.compile(r'"contents":"((?:[^"\\]|\\\\"|\\.)*)"')
+REG_DATAPACK_CONTENTS = re.compile(r'"contents":"((?:[^"\\]|\\\\|\\.)*)"')
 
 # Special REG
 SREG_MARCO = re.compile(r'\$\(.+\)')
@@ -131,8 +160,8 @@ SREG_MARCO = re.compile(r'\$\(.+\)')
 SREG_CMD_BOSSBAR_SET_NAME = re.compile(r'bossbar set ([^ ]+) name "(.*)"')
 SREG_CMD_BOSSBAR_ADD = re.compile(r'bossbar add ([^ ]+) "(.*)"')
 
-SREG_ADV_TITLE = re.compile(r'"title" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
-SREG_ADV_DESC = re.compile(r'"description" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
+SREG_ADV_TITLE = re.compile(r'"title" *: *"((?:[^"\\]|\\\\|\\.)*)"')
+SREG_ADV_DESC = re.compile(r'"description" *: *"((?:[^"\\]|\\\\|\\.)*)"')
 
 SREG_RECORD_NAME_TARGET_SELECTOR = re.compile(r'name=')
 
@@ -142,7 +171,7 @@ CONTAINERS = ["chest", "furnace", "shulker_box", "barrel", "smoker", "blast_furn
               "dispenser", "dropper", "brewing_stand", "campfire", "chiseled_bookshelf"]
 
 rev_lang = dict()  # Keep duplicates (reversed)
-rel_lang = dict()  # Normal language file format
+rel_lang = meta_dict("rel")  # Normal language file format
 mix_lang = dict()
 
 item_counts = dict()
@@ -173,7 +202,6 @@ def sub_replace(pattern: re.Pattern, string: str, repl, dupe=False, search_all=T
         loop_count = 0
         last_match = None
         match = pattern.search(string)
-        # can delete the 2 lines below
         if match is None:
             return string
         while match is not None:
@@ -181,7 +209,7 @@ def sub_replace(pattern: re.Pattern, string: str, repl, dupe=False, search_all=T
             if not DISABLE_COMPONENTS_LIMIT and last_match is not None and last_match.string == match.string:
                 loop_count += 1
                 if loop_count >= cfg_settings['components_max']:
-                    LOGGER.error(f"TOO MANY COMPONENTS HERE: {string}")
+                    LOGGER.warning(f"[WARN] TOO MANY COMPONENTS HERE: {string}")
             span = match.span()
             ls[span[0]:span[1]] = repl(match, dupe=dupe, is_marco=is_marco)
             match = pattern.search(''.join(ls))
@@ -203,7 +231,7 @@ def marcos_extract(string: str):
         if not DISABLE_MARCOS_LIMIT != -1 and last_match is not None and last_match.string == match.string:
             loop_count += 1
             if loop_count >= cfg_settings['marcos_max']:
-                LOGGER.error(f"TOO MANY MARCOS HERE: {string}")
+                LOGGER.warning(f"[WARN] TOO MANY MARCOS HERE: {string}")
         span = match.span()
         marcos.append(''.join(ls[span[0]:span[1]]))
         ls[span[0]:span[1]] = "[extracted]"
@@ -233,16 +261,13 @@ def match_text(match, escaped=False, dupe=False, is_marco=False, double_escaped=
         rev_lang[plain] = rk
     if plain in cfg_default:
         LOGGER.info(f'[text default] {cfg_default[plain]}: {plain}')
-        return (
-            f'\\\\"translate\\\\":\\\\"{cfg_default[plain]}\\\\"' if double_escaped else f'\\"translate\\":\\"{cfg_default[plain]}\\"') if escaped else f'"translate":"{cfg_default[plain]}"'
-    rel_lang[rk] = plain
+        return (f'\\\\"translate\\\\":\\\\"{cfg_default[plain]}\\\\"' if double_escaped else f'\\"translate\\":\\"{cfg_default[plain]}\\"') if escaped else f'"translate":"{cfg_default[plain]}"'
+    rel_lang.put(rk, plain, dupe)
     if dupe:
         LOGGER.info(f'[text dupeIf] put key: {rk}: {rel_lang[rk]}')
-        return (
-            f'\\\\"translate\\\\":\\\\"{rk}\\\\"' if double_escaped else f'\\"translate\\":\\"{rk}\\"') if escaped else f'"translate":"{rk}"'
+        return (f'\\\\"translate\\\\":\\\\"{rk}\\\\"' if double_escaped else f'\\"translate\\":\\"{rk}\\"') if escaped else f'"translate":"{rk}"'
     LOGGER.info(f'[text dupeElse] put key: {rev_lang[plain]}: {plain}')
-    return (
-        f'\\\\"translate\\\\":\\\\"{rev_lang[plain]}\\\\"' if double_escaped else f'\\"translate\\":\\"{rev_lang[plain]}\\"') if escaped else f'"translate":"{rev_lang[plain]}"'
+    return (f'\\\\"translate\\\\":\\\\"{rev_lang[plain]}\\\\"' if double_escaped else f'\\"translate\\":\\"{rev_lang[plain]}\\"') if escaped else f'"translate":"{rev_lang[plain]}"'
 
 
 def match_plain_text(match, dupe=False, is_marco=False):
@@ -253,7 +278,7 @@ def match_plain_text(match, dupe=False, is_marco=False):
     if plain in cfg_default:
         LOGGER.info(f'[plain default] {cfg_default[plain]}: {plain}')
         return f'{{"translate":"{cfg_default[plain]}"}}'
-    rel_lang[rk] = plain
+    rel_lang.put(rk, plain, dupe)
     if dupe:
         LOGGER.info(f'[plain dupeIf] put key: {rk}: {rel_lang[rk]}')
         return f'{{"translate":"{rk}"}}'
@@ -269,7 +294,7 @@ def match_contents(match, dupe=False, is_marco=False):
     if plain in cfg_default:
         LOGGER.info(f'[contents default] {cfg_default[plain]}: {plain}')
         return f'"contents":{{"translate":"{cfg_default[plain]}"}}'
-    rel_lang[rk] = plain
+    rel_lang.put(rk, plain, dupe)
     if dupe:
         LOGGER.info(f'[contents dupeIf] put key: {rk}: {rel_lang[rk]}')
         return f'"contents":{{"translate":"{rk}"}}'
@@ -291,7 +316,7 @@ def match_bossbar(match, dupe=False, is_marco=False):
     if plain in cfg_default:
         LOGGER.info(f'[bossbar set default] {cfg_default[plain]}: {plain}')
         return f'bossbar set {name} name {{{cfg_default[plain]}}}'
-    rel_lang[rk] = plain
+    rel_lang.put(rk, plain, dupe)
     if dupe:
         LOGGER.info(f'[bossbar set dupeIf] put key: {rk}: {rel_lang[rk]}')
         return f'bossbar set {name} name {{"translate":"{rk}"}}'
@@ -313,7 +338,7 @@ def match_bossbar2(match, dupe=False, is_marco=False):
     if plain in cfg_default:
         LOGGER.info(f'[bossbar add default] {cfg_default[plain]}: {plain}')
         return f'bossbar add {name} name {{{cfg_default[plain]}}}'
-    rel_lang[rk] = plain
+    rel_lang.put(rk, plain, dupe)
     if dupe:
         LOGGER.info(f'[bossbar add dupeIf] put key: {rk}: {rel_lang[rk]}')
         return f'bossbar add {name} {{"translate":"{rk}"}}'
@@ -329,7 +354,7 @@ def match_advancement_title(match, dupe=False, is_marco=False):
     if plain in cfg_default:
         LOGGER.info(f'[adv title default] {cfg_default[plain]}: {plain}')
         return f'"title":{{"translate":"{cfg_default[plain]}"}}'
-    rel_lang[rk] = plain
+    rel_lang.put(rk, plain, dupe)
     if dupe:
         LOGGER.info(f'[adv title dupeIf] put key: {rk}: {rel_lang[rk]}')
         return f'"title":{{"translate":"{rk}"}}'
@@ -345,7 +370,7 @@ def match_advancement_desc(match, dupe=False, is_marco=False):
     if plain in cfg_default:
         LOGGER.info(f'[adv desc default] {cfg_default[plain]}: {plain}')
         return f'"description":{{"translate":"{cfg_default[plain]}"}}'
-    rel_lang[rk] = plain
+    rel_lang.put(rk, plain, dupe)
     if dupe:
         LOGGER.info(f'[adv desc dupeIf] put key: {rk}: {rel_lang[rk]}')
         return f'"description":{{"translate":"{rk}"}}'
@@ -403,7 +428,7 @@ def handle_item(item, dupe=False):
             # TODO remember to sync it when `match_text` changed
             # NOT use default keys
             rk = f"item.{id}.{item_counts[id]}.title.1"
-            rel_lang[rk] = title
+            rel_lang.put(rk, title, dupe)
             if title not in rev_lang:
                 rev_lang[title] = rk
             if dupe or cfg_dupe["items_title"] or cfg_dupe["items_all"]:
@@ -636,7 +661,9 @@ def handle_block_entity_nbt(block_entity, id):
     return changed
 
 
-def handle_block_entity(block_entity):
+def handle_block_entity(block_entity, dimension):
+    if not WP_FILTER.filter(dimension, block_entity.x, block_entity.y, block_entity.z):
+        return False
     nbt = block_entity.nbt.tag['utags']
     changed = handle_block_entity_base(nbt, block_entity.base_name)
     if changed:
@@ -645,14 +672,16 @@ def handle_block_entity(block_entity):
     return changed
 
 
-def handle_chunk(chunk):
+def handle_chunk(chunk, dimension):
     for block_entity in chunk.block_entities:
-        chunk.changed |= handle_block_entity(block_entity)
+        chunk.changed |= handle_block_entity(block_entity, dimension)
 
 
 def handle_entities(level, coords, dimension, entities):
     changed = False
     for e in entities:
+        if not WP_FILTER.filter(dimension, e.x, e.y, e.z):
+            continue
         changed |= handle_entity(e.nbt.tag, e.base_name)
         if changed:
             LOGGER.info(f"[entity handler] {e.base_name}: (/tp {e.x} {e.y} {e.z})")
@@ -678,7 +707,7 @@ def scan_world(level):
                 except Exception:
                     pass
                 else:
-                    handle_chunk(chunk)
+                    handle_chunk(chunk, dimension)
                     handle_entities(level, coords, dimension, entities)
                     count += 1
                     if count < threshold:
@@ -749,12 +778,33 @@ def scan_command_storage(path, namespace):
     try:
         data = n.load(path)
         for c in data.tag['data']['contents']:
-            nbt_path = ""
-            if CS_FILTER.filter(namespace, nbt_path):
-                pass
+            traverse_tags(c, namespace, "")
         data.save_to(path)
     except Exception as e:
         LOGGER.error("无法访问命令存储/No command storage could be accessed: ", e)
+
+
+def traverse_tags(tag, namespace, path):
+    for key1 in tag:
+        next_data = tag[key1]
+        path = path + "." + key1
+        if isinstance(next_data, list):
+            for i in range(len(next_data)):
+                e = next_data[i]
+                if isinstance(e, str):
+                    if CS_FILTER.filter(namespace, path):
+                        replace_component(e, cfg_dupe["command_storage"])
+                elif isinstance(e, dict):
+                    traverse_tags(e, namespace, path + "[" + str(i) + "]")
+                else:
+                    break
+        elif isinstance(next_data, dict):
+            traverse_tags(next_data, namespace, path)
+        elif isinstance(next_data, str):
+            if CS_FILTER.filter(namespace, path):
+                replace_component(next_data, cfg_dupe["command_storage"])
+        else:
+            continue
 
 
 def scan_file(path, start):
@@ -812,12 +862,10 @@ def scan_datapacks(path):
 def clearup_keys():
     global mix_lang
     mixed = dict()
-    for k in rev_lang:
-        mixed[rev_lang[k]] = k
     for k in rel_lang:
-        v = rel_lang[k]
-        if v not in mixed:
-            mixed[k] = v
+        v: meta_dict.metadata = rel_lang.get(k)
+        if v.dupe or v.key not in mixed:
+            mixed[v.key] = v.value
     mix_lang = mixed
 
 
@@ -856,15 +904,15 @@ def main():
             cfg_lang = cfg_settings["lang"]
             cfg_dupe = cfg_settings["keep_duplicate_keys"]
             cfg_default = cfg_settings["default_keys"]
-            # cfg_filters: dict = cfg_settings["filters"]
+            cfg_filters: dict = cfg_settings["filters"]
 
             DISABLE_COMPONENTS_LIMIT = cfg_settings['components_max'] == -1
             DISABLE_MARCOS_LIMIT = cfg_settings['marcos_max'] == -1
 
-            # for f in cfg_filters['command_storages']:
-            #     CS_FILTER.add(f['mode'], f['namespace'], f['path'])
-            # for f in cfg_filters['world_positions']:
-            #     WP_FILTER.add(f['mode'], f['world'], f['start'], f['end'])
+            for f in cfg_filters['command_storages']:
+                CS_FILTER.add(f['mode'], f['namespace'], f['path'])
+            for f in cfg_filters['world_positions']:
+                WP_FILTER.add(f['mode'], f['world'], f['start'], f['end'])
 
     except Exception as e:
         LOGGER.error("打开config.json时出错: /Error opening config.json: ", e)
@@ -879,8 +927,8 @@ def main():
         backup_saves(os.path.abspath(f"./backup_{sys.argv[1]}"), sys.argv[1])
 
     for k in cfg_default:
-        rev_lang[k] = cfg_default[k]
-        rel_lang[cfg_default[k]] = k
+        rev_lang[k] = cfg_default
+        rel_lang.put(cfg_default[k], k, True)
 
     LOGGER.info("\n扫描区块.../Scanning chunks...")
     try:
@@ -895,7 +943,7 @@ def main():
         exit(1)
 
     LOGGER.info("\n扫描杂项NBT/Scanning misc NBT...")
-    # scan_command_storages(sys.argv[1] + "/data")
+    scan_command_storages(sys.argv[1] + "/data")
     scan_scores(sys.argv[1] + "/data/scoreboard.dat")
     scan_level(sys.argv[1] + "/level.dat")
 
@@ -920,7 +968,7 @@ if __name__ == '__main__':
   \ \ \_/ \_\ \ \ \ \ \ \ \L\ \ \ \_/\ \ 
    \ `\___x___/  \ \_\ \ \____/\ \_\\ \_\
     '\/__//__/    \/_/  \/___/  \/_/ \/_/
-----WTEM v2.5 By 3093FengMing
+----WTEM v2.7 By 3093FengMing
 ----Core: Amulet
 ----Credits: Suso''')
     os.system("pause")

@@ -34,7 +34,7 @@ Finds json components in:
 - Blocks
   - Spawners: SpawnData, SpawnPotentials
   - Containers: items, container name (`"chest"`, `"furnace"`, `"shulker_box"`, `"barrel"`, `"smoker"`, `"blast_furnace"`, `"trapped_chest"`, `"hopper"`, `"dispenser"`, `"dropper"`, `"brewing_stand"`, `"campfire"`, <u>**`"chiseled_bookshelf"`**</u>, <u>**`"decorated_pot"`**</u>)
-  - Signs: text1-4, <u>**front_text, back_text**</u>
+  - (Hanging) Signs: text1-4, <u>**front_text, back_text**</u>
   - Lecterns: Book
   - Jukeboxes: RecordItem
   - <u>**Beehives & Bee nests: Bees**

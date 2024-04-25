@@ -35,7 +35,7 @@ Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob
 - 方块
   - 刷怪笼: SpawnData (下一个生成的实体), SpawnPotentials (要生成实体的列表)
   - 容器: items (物品), 容器名称 (`"chest"`, `"furnace"`, `"shulker_box"`, `"barrel"`, `"smoker"`, `"blast_furnace"`, `"trapped_chest"`, `"hopper"`, `"dispenser"`, `"dropper"`, `"brewing_stand"`, `"campfire"`, <u>**`"chiseled_bookshelf"`**</u>, <u>**`"decorated_pot"`**</u>)
-  - 告示牌: text1-4 (一至四行文本), <u>**front_text, back_text (正反面文本)**</u>
+  - (悬挂)告示牌: text1-4 (一至四行文本), <u>**front_text, back_text (正反面文本)**</u>
   - 讲台: Book (成书)
   - 唱片机: RecordItem (唱片)
   - <u>**蜂窝与蜂巢: Bees (蜜蜂)**
