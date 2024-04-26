@@ -33,7 +33,7 @@ class cs_filter:
             return True
         if namespace in self.exclude_namespaces and path in self.exclude_paths:
             return False
-        return False
+        return True
 
 
 class wp_filter:
@@ -50,8 +50,8 @@ class wp_filter:
             self.z = z
 
     def add(self, mode, world, _start: list, _end: list):
-        start = list()
-        end = list()
+        start = [0, 0, 0]
+        end = [0, 0, 0]
         for i in range(0, 3):
             start[i] = min(_start[i], _end[i])
             end[i] = max(_start[i], _end[i])
@@ -70,11 +70,14 @@ class wp_filter:
         else:
             raise RuntimeError(f"Filter mode {mode} is not exist!")
 
+        pass
+
     def is_in(self, x: int, y: int, z: int, sae: list):
         start: wp_filter.vector3i = sae[0]
         end: wp_filter.vector3i = sae[1]
         if start.x <= x <= end.x and start.y <= y <= end.y and start.z <= z <= end.z:
             return True
+        return False
 
     def filter(self, world, x: int, y: int, z: int):
         if world in self.include_worlds:
@@ -100,11 +103,10 @@ class wp_filter:
 
 class meta_dict(dict):
     class metadata:
-        def __init__(self, key, value, dupe: bool, rev_or_rel: str):
+        def __init__(self, key, value, dupe: bool):
             self.key = key
             self.value = value
             self.dupe = dupe
-            self.rev_ore_rel = rev_or_rel
 
     def __init__(self, type):
         super().__init__()
@@ -112,13 +114,25 @@ class meta_dict(dict):
         self.type = type
 
     def put(self, key, value, dupe):
-        self.inner_dict.__setitem__(key, meta_dict.metadata(key, value, dupe, self.type))
+        self.inner_dict.__setitem__(key, meta_dict.metadata(key, value, dupe))
 
     def get(self, key):
         return self.inner_dict.__getitem__(key)
 
     def __getitem__(self, item):
         return self.inner_dict.__getitem__(item).value
+
+    def __len__(self):
+        return self.inner_dict.__len__()
+
+    def items(self):
+        dct = list()
+        for e in self.inner_dict.values():
+            dct.append([e.key, e.value])
+        return dct
+
+    def __iter__(self):
+        return self.inner_dict.__iter__()
 
 
 # Logger
@@ -196,7 +210,7 @@ def get_key():
 
 
 # match & replace
-def sub_replace(pattern: re.Pattern, string: str, repl, dupe=False, search_all=True, is_marco=False, ):
+def sub_replace(pattern: re.Pattern, string: str, repl, dupe=False, search_all=True, is_marco=False):
     if search_all:
         ls = list(string)
         loop_count = 0
@@ -464,7 +478,7 @@ def handle_container(container, type):
     if translation_cnt != len(rel_lang):
         block_counts[type] += 1
 
-    if "Lock" in container:
+    if "Lock" in container and len(container['Lock']) == 0:
         LOGGER.info("[record] Lock: " + str(container['Lock']))
 
     if "Items" in container:
@@ -654,9 +668,9 @@ def handle_block_entity_base(block_entity, name):
 
 
 def handle_block_entity_nbt(block_entity, id):
-    changed = handle_block_entity_base(block_entity, id[10:])  # after "minecraft:"
+    changed = handle_block_entity_base(block_entity, str(id)[10:])  # after "minecraft:"
     if changed:
-        LOGGER.info(f"[block entity nbt handler] {id[10:]}: (Structure/ItemLike)")
+        LOGGER.info(f"[block entity nbt handler] {str(id)[10:]}: (Structure/ItemLike)")
         LOGGER.info('---------------------------')
     return changed
 
@@ -777,34 +791,43 @@ def scan_command_storages(path):
 def scan_command_storage(path, namespace):
     try:
         data = n.load(path)
-        for c in data.tag['data']['contents']:
-            traverse_tags(c, namespace, "")
+        ctx = data.tag['data']['contents']
+        for c in ctx:
+            traverse_tags(c, ctx[c], namespace, "")
         data.save_to(path)
     except Exception as e:
         LOGGER.error("无法访问命令存储/No command storage could be accessed: ", e)
 
 
-def traverse_tags(tag, namespace, path):
+def traverse_tags(c, tag, namespace, path):
+    if c is not None:
+        path = path + ("." if path else "") + c
     for key1 in tag:
-        next_data = tag[key1]
-        path = path + "." + key1
-        if isinstance(next_data, list):
+        k = str(key1)
+        path_ = path + "." + k
+        next_data = tag[k]
+        if isinstance(next_data, n.ListTag):
             for i in range(len(next_data)):
+                path__ = path_ + "[" + str(i) + "]"
                 e = next_data[i]
-                if isinstance(e, str):
-                    if CS_FILTER.filter(namespace, path):
-                        replace_component(e, cfg_dupe["command_storage"])
-                elif isinstance(e, dict):
-                    traverse_tags(e, namespace, path + "[" + str(i) + "]")
+                if isinstance(e, n.StringTag):
+                    if CS_FILTER.filter(namespace, path__):
+                        set_key("command_storage." + path__)
+                        e = replace_component(e, cfg_dupe["command_storage"])
+                elif isinstance(e, n.CompoundTag):
+                    traverse_tags(None, e, namespace, path__)
                 else:
                     break
-        elif isinstance(next_data, dict):
-            traverse_tags(next_data, namespace, path)
-        elif isinstance(next_data, str):
-            if CS_FILTER.filter(namespace, path):
-                replace_component(next_data, cfg_dupe["command_storage"])
+                next_data[i] = e
+        elif isinstance(next_data, n.CompoundTag):
+            traverse_tags(None, next_data, namespace, path_)
+        elif isinstance(next_data, n.StringTag):
+            if CS_FILTER.filter(namespace, path_):
+                set_key("command_storage." + path_)
+                next_data = replace_component(next_data, cfg_dupe["command_storage"])
         else:
             continue
+        tag[k] = next_data
 
 
 def scan_file(path, start):
@@ -844,7 +867,7 @@ def scan_file(path, start):
 
                 m = SREG_RECORD_NAME_TARGET_SELECTOR.search(txt)
                 if m is not None:
-                    LOGGER.info("[record] Target Selector Name: L" + str(i))
+                    LOGGER.info(f"[record] DP {path[start:]}, target Selector Name: L" + str(i))
 
         with open(path, 'w', encoding="utf-8") as f:
             f.writelines(lines)
@@ -864,7 +887,7 @@ def clearup_keys():
     mixed = dict()
     for k in rel_lang:
         v: meta_dict.metadata = rel_lang.get(k)
-        if v.dupe or v.key not in mixed:
+        if v.dupe or v.value not in mixed.values():
             mixed[v.key] = v.value
     mix_lang = mixed
 
@@ -904,7 +927,7 @@ def main():
             cfg_lang = cfg_settings["lang"]
             cfg_dupe = cfg_settings["keep_duplicate_keys"]
             cfg_default = cfg_settings["default_keys"]
-            cfg_filters: dict = cfg_settings["filters"]
+            cfg_filters = cfg_settings["filters"]
 
             DISABLE_COMPONENTS_LIMIT = cfg_settings['components_max'] == -1
             DISABLE_MARCOS_LIMIT = cfg_settings['marcos_max'] == -1
@@ -944,8 +967,8 @@ def main():
 
     LOGGER.info("\n扫描杂项NBT/Scanning misc NBT...")
     scan_command_storages(sys.argv[1] + "/data")
-    scan_scores(sys.argv[1] + "/data/scoreboard.dat")
-    scan_level(sys.argv[1] + "/level.dat")
+    #scan_scores(sys.argv[1] + "/data/scoreboard.dat")
+    #scan_level(sys.argv[1] + "/level.dat")
 
     LOGGER.info("\n扫描数据包文件/Scanning datapack files...")
     scan_datapacks(sys.argv[1] + "/datapacks")
@@ -971,5 +994,5 @@ if __name__ == '__main__':
 ----WTEM v2.7 By 3093FengMing
 ----Core: Amulet
 ----Credits: Suso''')
-    os.system("pause")
+#    os.system("pause")
     main()
