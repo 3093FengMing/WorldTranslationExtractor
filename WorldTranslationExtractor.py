@@ -98,7 +98,7 @@ class wp_filter:
                     bl |= True
             return bl
 
-        return False
+        return True
 
 
 class meta_dict(dict):
@@ -428,6 +428,8 @@ def handle_item(item, dupe=False):
                 item['tag']['display']['Lore'][line] = replace_component(item['tag']['display']['Lore'][line], dupe | cfg_dupe["items_lore"] | cfg_dupe["items_all"])
             changed = True
 
+    # Written book
+    # Writable book is untranslatable
     if 'pages' in item['tag']:
         for page in range(len(item['tag']['pages'])):
             set_key(f"item.{id}.{item_counts[id]}.page.{page}")
@@ -991,7 +993,7 @@ if __name__ == '__main__':
   \ \ \_/ \_\ \ \ \ \ \ \ \L\ \ \ \_/\ \ 
    \ `\___x___/  \ \_\ \ \____/\ \_\\ \_\
     '\/__//__/    \/_/  \/___/  \/_/ \/_/
-----WTEM v2.7 By 3093FengMing
+----WTEM v2.8 By 3093FengMing
 ----Core: Amulet
 ----Credits: Suso''')
 #    os.system("pause")
