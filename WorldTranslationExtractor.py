@@ -944,7 +944,7 @@ def main():
         exit(1)
 
     if len(sys.argv) < 2:
-        LOGGER.error(f"用法: python {sys.argv[0]} <存档>/Usage: python {sys.argv[0]} <world>")
+        LOGGER.error(f"用法: python wtem.exe <存档>/Usage: python wtem.exe <world>")
         exit(0)
 
     if cfg_settings["backup"]:
