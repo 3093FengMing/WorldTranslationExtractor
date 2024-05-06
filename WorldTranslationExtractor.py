@@ -996,5 +996,5 @@ if __name__ == '__main__':
 ----WTEM v2.8 By 3093FengMing
 ----Core: Amulet
 ----Credits: Suso''')
-#    os.system("pause")
+    os.system("pause")
     main()
