@@ -1,4 +1,4 @@
-## 存档翻译提取器魔改版 (WTEM) 2.8
+## 存档翻译提取器魔改版 (WTEM) 2.9
 World Translation Extractor Modified
 
 Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob/main/WorldTranslationExtractor.py)
@@ -68,4 +68,4 @@ Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob
 
 - 结构: blocks (方块), entities (实体)
 
-用法: `python WorldTranslationExtractor.py <world>` (会修改存档，在工作目录下输出 `default_lang.json` )
+用法: `python WorldTranslationExtractor.py <world>` (会修改存档，在工作目录下输出 `en_us_*.json` )

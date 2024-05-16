@@ -1,4 +1,4 @@
-## World Translation Extractor Modified (WTEM) 2.8
+## World Translation Extractor Modified (WTEM) 2.9
 Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob/main/WorldTranslationExtractor.py)
 
 ### Information
@@ -67,4 +67,4 @@ Finds json components in:
 
 - Structures: blocks, entities
 
-Usage: `python WorldTranslationExtractor.py <world>` (Modifies world, outputs `default_lang.json` in the working directory)
+Usage: `python WorldTranslationExtractor.py <world>` (Modifies world, outputs `en_us_*.json` in the working directory)

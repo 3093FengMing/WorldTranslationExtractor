@@ -165,7 +165,7 @@ REG_ANY_TEXT = r'"((?:[^"\\]|\\\\|\\.)*)"'
 REG_COMPONENT = re.compile(r'"text" *: *"((?:[^"\\]|\\\\|\\.)*)"')
 REG_COMPONENT_PLAIN = re.compile(r'"((?:[^"\\]|\\\\|\\.)*)"')
 REG_COMPONENT_DOUBLE_ESCAPED = re.compile(r'\\\\"text\\\\" *: *\\\\"((?:[^"\\]|\\\\.)*)\\\\"')
-REG_COMPONENT_ESCAPED = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\.)*)\\"')
+REG_COMPONENT_ESCAPED = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\|\\.)*)\\"')
 REG_DATAPACK_CONTENTS = re.compile(r'"contents":"((?:[^"\\]|\\\\|\\.)*)"')
 
 # Special REG
@@ -173,6 +173,9 @@ SREG_MARCO = re.compile(r'\$\(.+\)')
 
 SREG_CMD_BOSSBAR_SET_NAME = re.compile(r'bossbar set ([^ ]+) name "(.*)"')
 SREG_CMD_BOSSBAR_ADD = re.compile(r'bossbar add ([^ ]+) "(.*)"')
+
+SREG_COMPONENT_ESCAPED = re.compile(r'\"text\" *: *\"((?:[^"\\]|\\\\.)*)\"')
+SREG_COMPONENT = re.compile(r'"text" *: *"((?:[^"\\]|\\\\.)*)"')
 
 SREG_ADV_TITLE = re.compile(r'"title" *: *"((?:[^"\\]|\\\\|\\.)*)"')
 SREG_ADV_DESC = re.compile(r'"description" *: *"((?:[^"\\]|\\\\|\\.)*)"')
@@ -401,10 +404,13 @@ def match_text_escaped(match, dupe=False, is_marco=False):
 
 
 def replace_component(text, dupe=False):
-    text = sub_replace(REG_COMPONENT_PLAIN, str(text), match_plain_text, dupe, False)
-    text = sub_replace(REG_COMPONENT, text, match_text, dupe)
+    text = sub_replace(SREG_COMPONENT_ESCAPED, str(text), match_text, dupe, False)
     text = sub_replace(REG_COMPONENT_DOUBLE_ESCAPED, text, match_text_double_escaped, dupe)
-    return n.TAG_String(sub_replace(REG_COMPONENT_ESCAPED, text, match_text_escaped, dupe))
+    text = sub_replace(REG_COMPONENT_ESCAPED, text, match_text_escaped, dupe)
+    text = sub_replace(SREG_COMPONENT, text, match_text, dupe, False)
+    text = sub_replace(REG_COMPONENT, text, match_text, dupe)
+    text = sub_replace(REG_COMPONENT_PLAIN, text, match_plain_text, dupe, False)
+    return n.TAG_String(text)
 
 
 # handler
@@ -516,15 +522,21 @@ def handle_command_block(command_block):
     set_key(f"block.command_block.{block_counts['command_block']}.command")
 
     command = str(command_block['Command'])
-    txt = sub_replace(REG_COMPONENT, command, match_text, cfg_dupe["command_blocks"])
+    txt = command
+
+    txt = sub_replace(SREG_COMPONENT_ESCAPED, txt, match_text, cfg_dupe["command_blocks"])
     txt = sub_replace(REG_COMPONENT_ESCAPED, txt, match_text_escaped, cfg_dupe["command_blocks"])
+    txt = sub_replace(SREG_COMPONENT, txt, match_text, cfg_dupe["command_blocks"])
+    txt = sub_replace(REG_COMPONENT, txt, match_text, cfg_dupe["command_blocks"])
     # txt = sub_replace(REG_COMPONENT_PLAIN, txt, match_text, cfg_dupe["command_blocks"], False)
     txt = sub_replace(REG_DATAPACK_CONTENTS, txt, match_contents, cfg_dupe["command_blocks"])
-    txt = sub_replace(SREG_CMD_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["command_blocks"])
-    result_command = sub_replace(SREG_CMD_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["command_blocks"])
-    command_block['Command'] = n.TAG_String(result_command)
 
-    m = SREG_RECORD_NAME_TARGET_SELECTOR.search(result_command)
+    txt = sub_replace(SREG_CMD_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["command_blocks"])
+    txt = sub_replace(SREG_CMD_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["command_blocks"])
+
+    command_block['Command'] = n.TAG_String(txt)
+
+    m = SREG_RECORD_NAME_TARGET_SELECTOR.search(txt)
     if m is not None:
         LOGGER.info("[record] Target Selector Name: " + str(m.start()))
 
@@ -855,17 +867,22 @@ def scan_file(path, start):
 
                 txt = lines[i]
 
+                # Functions
+                txt = sub_replace(SREG_COMPONENT_ESCAPED, txt, match_text, cfg_dupe["datapacks"], is_marco=is_macro)
+                txt = sub_replace(REG_COMPONENT_DOUBLE_ESCAPED, txt, match_text_double_escaped, cfg_dupe["datapacks"], is_marco=is_macro)
+                txt = sub_replace(REG_COMPONENT_ESCAPED, txt, match_text_escaped, cfg_dupe["datapacks"], is_marco=is_macro)
+                txt = sub_replace(SREG_COMPONENT, txt, match_text, cfg_dupe["datapacks"], is_marco=is_macro)
+                txt = sub_replace(REG_COMPONENT, txt, match_text, cfg_dupe["datapacks"], is_marco=is_macro)
+                txt = sub_replace(REG_DATAPACK_CONTENTS, txt, match_contents, cfg_dupe["datapacks"])
+
                 # Advancements
                 txt = sub_replace(SREG_ADV_TITLE, txt, match_advancement_title, cfg_dupe["advancements"])
                 txt = sub_replace(SREG_ADV_DESC, txt, match_advancement_desc, cfg_dupe["advancements"])
 
-                # Functions
-                txt = sub_replace(REG_COMPONENT, txt, match_text, cfg_dupe["datapacks"], is_marco=is_macro)
-                txt = sub_replace(REG_COMPONENT_DOUBLE_ESCAPED, txt, match_text_double_escaped, cfg_dupe["datapacks"], is_marco=is_macro)
-                txt = sub_replace(REG_COMPONENT_ESCAPED, txt, match_text_escaped, cfg_dupe["datapacks"], is_marco=is_macro)
-                txt = sub_replace(REG_DATAPACK_CONTENTS, txt, match_contents, cfg_dupe["datapacks"])
                 txt = sub_replace(SREG_CMD_BOSSBAR_SET_NAME, txt, match_bossbar, cfg_dupe["datapacks"], is_marco=is_macro)
-                lines[i] = sub_replace(SREG_CMD_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["datapacks"], is_marco=is_macro)
+                txt = sub_replace(SREG_CMD_BOSSBAR_ADD, txt, match_bossbar2, cfg_dupe["datapacks"], is_marco=is_macro)
+
+                lines[i] = txt
 
                 m = SREG_RECORD_NAME_TARGET_SELECTOR.search(txt)
                 if m is not None:
@@ -948,8 +965,9 @@ def main():
         exit(0)
 
     if cfg_settings["backup"]:
-        LOGGER.info(f"备份中: /Backup: {os.path.abspath('.')}{os.sep}backup_{sys.argv[1]}")
-        backup_saves(os.path.abspath(f"./backup_{sys.argv[1]}"), sys.argv[1])
+        backup_name = os.path.basename(os.path.abspath(sys.argv[1]))
+        LOGGER.info(f"备份中: /Backup: {os.path.abspath('.')}{os.sep}backup_{backup_name}")
+        backup_saves(os.path.abspath(f"./backup_{backup_name}"), sys.argv[1])
 
     for k in cfg_default:
         rev_lang[k] = cfg_default
@@ -969,8 +987,8 @@ def main():
 
     LOGGER.info("\n扫描杂项NBT/Scanning misc NBT...")
     scan_command_storages(sys.argv[1] + "/data")
-    #scan_scores(sys.argv[1] + "/data/scoreboard.dat")
-    #scan_level(sys.argv[1] + "/level.dat")
+    scan_scores(sys.argv[1] + "/data/scoreboard.dat")
+    scan_level(sys.argv[1] + "/level.dat")
 
     LOGGER.info("\n扫描数据包文件/Scanning datapack files...")
     scan_datapacks(sys.argv[1] + "/datapacks")
@@ -993,7 +1011,7 @@ if __name__ == '__main__':
   \ \ \_/ \_\ \ \ \ \ \ \ \L\ \ \ \_/\ \ 
    \ `\___x___/  \ \_\ \ \____/\ \_\\ \_\
     '\/__//__/    \/_/  \/___/  \/_/ \/_/
-----WTEM v2.8 By 3093FengMing
+----WTEM v2.9 By 3093FengMing
 ----Core: Amulet
 ----Credits: Suso''')
     os.system("pause")
