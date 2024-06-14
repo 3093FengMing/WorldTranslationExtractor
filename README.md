@@ -1,9 +1,9 @@
-## World Translation Extractor Modified (WTEM) 2.91
+## World Translation Extractor Modified (WTEM) 2.92
 Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob/main/WorldTranslationExtractor.py)
 
 ### Information
 This version changes some things.
-Needs `amulet-map-editor` and `tqdm`.
+Needs `amulet-core` and `tqdm`.
 
 Install: `pip install amulet-map-editor`, `pip install tqdm`
 
@@ -67,4 +67,4 @@ Finds json components in:
 
 - Structures: blocks, entities
 
-Usage: `python WorldTranslationExtractor.py <world>` (Modifies world, outputs `en_us_*.json` in the working directory)
+Usage: `python wtem.exe <world>` (Modifies world, outputs `en_us_*.json` in the working directory)

@@ -725,10 +725,10 @@ def scan_world(level):
         chunk_coords = sorted(level.all_chunk_coords(dimension))
         if len(chunk_coords) < 1:
             continue
-        LOGGER.info(f"维度/Dimension {dimension}: ")
+        LOGGER.info(f"Dimension {dimension}: ")
         try:
             count = 0
-            for coords in tqdm(chunk_coords, unit="区块", desc="扫描区块中/Scanning chunks", colour="green"):
+            for coords in tqdm(chunk_coords, unit="chunks", desc="Scanning chunks", colour="green"):
                 try:
                     chunk = level.get_chunk(coords[0], coords[1], dimension)
                     entities = level.get_native_entities(coords[0], coords[1], dimension)[0]
@@ -746,7 +746,7 @@ def scan_world(level):
                     level.unload()
             level.save()
         except KeyboardInterrupt:
-            LOGGER.error(f"中断！最后{threshold}个区块切片数据将不会保存！/Interrupted. Changes to last {threshold} chunks slice won't be saved.")
+            LOGGER.error(f"Interrupted. Changes to last {threshold} chunks slice won't be saved.")
             level.close()
             exit(0)
         level.unload()
@@ -768,7 +768,7 @@ def scan_scores(path):
             t['MemberNameSuffix'] = replace_component(t['MemberNameSuffix'], cfg_dupe["scores_teams_suffix"] | cfg_dupe["scores_all"])
         scores.save_to(path)
     except Exception as e:
-        LOGGER.error("无法访问计分板数据：/No scoreboard data could be accessed: ", e)
+        LOGGER.error("No scoreboard data could be accessed: ", e)
 
 
 def scan_level(path):
@@ -780,7 +780,7 @@ def scan_level(path):
                 level.tag['Data']['CustomBossEvents'][b]['Name'], cfg_dupe["bossbar"])
         level.save_to(path)
     except Exception as e:
-        LOGGER.error("无法访问Bossbar数据：/No bossbar data could be accessed: ", e)
+        LOGGER.error("No bossbar data could be accessed: ", e)
 
 
 def scan_structure(path):
@@ -792,7 +792,7 @@ def scan_structure(path):
             handle_entity(e['nbt'], None)
         structure.save_to(path)
     except Exception as e:
-        LOGGER.error("无法访问结构文件/No structure file could be accessed: ", e)
+        LOGGER.error("No structure file could be accessed: ", e)
 
 
 def scan_command_storages(path):
@@ -810,7 +810,7 @@ def scan_command_storage(path, namespace):
             traverse_tags(c, ctx[c], namespace, "")
         data.save_to(path)
     except Exception as e:
-        LOGGER.error("无法访问命令存储/No command storage could be accessed: ", e)
+        LOGGER.error("No command storage could be accessed: ", e)
 
 
 def traverse_tags(c, tag, namespace, path):
@@ -891,7 +891,7 @@ def scan_file(path, start):
         with open(path, 'w', encoding="utf-8") as f:
             f.writelines(lines)
     except Exception as e:
-        LOGGER.error("无法替换数据包文件/Could not replace datapack file '" + path + "':", e)
+        LOGGER.error("Could not replace datapack file '" + path + "':", e)
 
 
 def scan_datapacks(path):
@@ -957,50 +957,50 @@ def main():
                 WP_FILTER.add(f['mode'], f['world'], f['start'], f['end'])
 
     except Exception as e:
-        LOGGER.error("打开config.json时出错: /Error opening config.json: ", e)
+        LOGGER.error("Error opening config.json: ", e)
         exit(1)
 
     if len(sys.argv) < 2:
-        LOGGER.error(f"用法: python wtem.exe <存档>/Usage: python wtem.exe <world>")
+        LOGGER.error(f"Usage: python wtem.exe <world>")
         exit(0)
 
     if cfg_settings["backup"]:
         backup_name = os.path.basename(os.path.abspath(sys.argv[1]))
-        LOGGER.info(f"备份中: /Backup: {os.path.abspath('.')}{os.sep}backup_{backup_name}")
+        LOGGER.info(f"Backup: {os.path.abspath('.')}{os.sep}backup_{backup_name}")
         backup_saves(os.path.abspath(f"./backup_{backup_name}"), sys.argv[1])
 
     for k in cfg_default:
         rev_lang[k] = cfg_default
         rel_lang.put(cfg_default[k], k, True)
 
-    LOGGER.info("\n扫描区块.../Scanning chunks...")
+    LOGGER.info("\nScanning chunks...")
     try:
         level = amulet.load_level(sys.argv[1])
         if level.level_wrapper.version < 2826:
             global OLD_SPAWNER_FORMAT
             OLD_SPAWNER_FORMAT = True
-            LOGGER.info("使用旧版刷怪笼格式/Using old spawner format.")
+            LOGGER.info("Using old spawner format.")
         scan_world(level)
     except Exception as e:
-        LOGGER.error("加载存档时出错: /Error loading world: ", e)
+        LOGGER.error("Error loading world: ", e)
         exit(1)
 
-    LOGGER.info("\n扫描杂项NBT/Scanning misc NBT...")
+    LOGGER.info("\nScanning misc NBT...")
     scan_command_storages(sys.argv[1] + "/data")
     scan_scores(sys.argv[1] + "/data/scoreboard.dat")
     scan_level(sys.argv[1] + "/level.dat")
 
-    LOGGER.info("\n扫描数据包文件/Scanning datapack files...")
+    LOGGER.info("\nScanning datapack files...")
     scan_datapacks(sys.argv[1] + "/datapacks")
     scan_datapacks(sys.argv[1] + "/generated")
 
-    LOGGER.info("\n剔除冗余键/Remove redundant keys...")
+    LOGGER.info("\nRemove redundant keys...")
     clearup_keys()
 
-    LOGGER.info("\n生成语言文件/Generating default lang file...")
+    LOGGER.info("\nGenerating default lang file...")
     gen_lang(cfg_lang["file_name"])
 
-    LOGGER.info("完工！/Done!")
+    LOGGER.info("Done!")
 
 
 if __name__ == '__main__':
@@ -1011,7 +1011,7 @@ if __name__ == '__main__':
   \ \ \_/ \_\ \ \ \ \ \ \ \L\ \ \ \_/\ \ 
    \ `\___x___/  \ \_\ \ \____/\ \_\\ \_\
     '\/__//__/    \/_/  \/___/  \/_/ \/_/
-----WTEM v2.91 By 3093FengMing
+----WTEM v2.92 By 3093FengMing
 ----Core: Amulet
 ----Credits: Suso''')
     os.system("pause")

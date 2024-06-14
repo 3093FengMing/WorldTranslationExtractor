@@ -1,11 +1,11 @@
-## 存档翻译提取器魔改版 (WTEM) 2.91
+## 存档翻译提取器魔改版 (WTEM) 2.92
 World Translation Extractor Modified
 
 Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob/main/WorldTranslationExtractor.py)
 
 ### 信息
 该版本修改了部分内容。
-依赖 `amulet-map-editor` 以及 `tqdm`.
+依赖 `amulet-core` 以及 `tqdm`.
 
 安装: `pip install amulet-map-editor`, `pip install tqdm`
 
@@ -68,4 +68,4 @@ Forked by [WorldTranslationExtractor](https://github.com/5uso/AmuletScripts/blob
 
 - 结构: blocks (方块), entities (实体)
 
-用法: `python WorldTranslationExtractor.py <world>` (会修改存档，在工作目录下输出 `en_us_*.json` )
+用法: `python wtem.exe <world>` (会修改存档，在工作目录下输出 `en_us_*.json` )
