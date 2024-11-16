@@ -162,10 +162,10 @@ WP_FILTER = wp_filter()
 # REG
 REG_ANY_TEXT = r'"((?:[^"\\]|\\\\|\\.)*)"'
 
-REG_COMPONENT = re.compile(r'"text" *: *"((?:[^"\\]|\\\\|\\.)*)"')
+REG_COMPONENT = re.compile(r'"text" *: *"((?:[^"\\]|\\\\"|\\.)*)"')
 REG_COMPONENT_PLAIN = re.compile(r'"((?:[^"\\]|\\\\|\\.)*)"')
 REG_COMPONENT_DOUBLE_ESCAPED = re.compile(r'\\\\"text\\\\" *: *\\\\"((?:[^"\\]|\\\\.)*)\\\\"')
-REG_COMPONENT_ESCAPED = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\|\\.)*)\\"')
+REG_COMPONENT_ESCAPED = re.compile(r'\\"text\\" *: *\\"((?:[^"\\]|\\\\.)*)\\"')
 REG_DATAPACK_CONTENTS = re.compile(r'"contents":"((?:[^"\\]|\\\\|\\.)*)"')
 
 # Special REG
@@ -645,8 +645,9 @@ def handle_entity(entity, type):
     if "Offers" in entity and "Recipes" in entity["Offers"]:
         for t in entity['Offers']['Recipes']:
             changed |= handle_item(t['buy'])
-            changed |= handle_item(t['buyB'])
             changed |= handle_item(t['sell'])
+            if "buyB" in t:
+                changed |= handle_item(t['buyB'])
 
     # Can be ridden
     if "Passengers" in entity:
@@ -741,7 +742,7 @@ def scan_world(level):
                     if count < threshold:
                         continue
                     count = 0
-                    LOGGER.info("\n保存中......")
+                    LOGGER.info("\nSaving......")
                     level.save()
                     level.unload()
             level.save()
@@ -1011,7 +1012,7 @@ if __name__ == '__main__':
   \ \ \_/ \_\ \ \ \ \ \ \ \L\ \ \ \_/\ \ 
    \ `\___x___/  \ \_\ \ \____/\ \_\\ \_\
     '\/__//__/    \/_/  \/___/  \/_/ \/_/
-----WTEM v2.92 By 3093FengMing
+----WTEM v2.93 By 3093FengMing
 ----Core: Amulet
 ----Credits: Suso''')
     os.system("pause")
